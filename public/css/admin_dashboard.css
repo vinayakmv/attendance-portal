@@ -1,0 +1,182 @@
+/* public/css/admin_dashboard.css */
+
+/* Admin Dashboard Specific Styles */
+.admin-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 25px;
+    margin-bottom: 40px;
+}
+
+.nav-link-card {
+    text-align: center;
+    padding: 35px 20px;
+    background: linear-gradient(135deg, #e0f7fa, #b2ebf2);
+    border: 3px solid #00bcd4;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.nav-link-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 20px rgba(0, 188, 212, 0.2);
+}
+
+.nav-link-card a {
+    font-size: 1.3em;
+    font-weight: bold;
+    color: #006064;
+    text-decoration: none;
+    margin-top: 10px;
+    display: inline-block;
+}
+
+.panel {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.panel h3 {
+    margin-top: 0;
+    color: #007bff;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 8px;
+}
+
+.users-list ul {
+    list-style: none;
+    padding: 0;
+    margin: 10px 0 0;
+}
+
+.users-list li {
+    padding: 10px 0;
+    border-bottom: 1px dashed #ddd;
+    font-size: 0.95em;
+}
+
+/* Attendance Table Styling */
+.attendance-container {
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.attendance-panel {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+}
+
+.attendance-panel h2 {
+    background-color: #007bff;
+    color: white;
+    margin: 0;
+    padding: 20px;
+    text-align: center;
+    font-size: 1.8em;
+}
+
+.log-btn {
+    margin: 20px;
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 1em;
+    cursor: pointer;
+    float: left;
+}
+
+.log-btn:hover {
+    background-color: #0056b3;
+}
+
+#attendanceTable {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95em;
+}
+
+#attendanceTable th {
+    background-color: #007bff;
+    color: white;
+    padding: 15px 12px;
+    text-align: left;
+}
+
+#attendanceTable td {
+    padding: 14px 12px;
+    border-bottom: 1px solid #eee;
+}
+
+#attendanceTable tr:nth-child(even) {
+    background-color: #f8f9fa;
+}
+
+#attendanceTable tr:hover {
+    background-color: #e3f2fd;
+}
+
+.clear-btn {
+    margin: 20px;
+    padding: 12px 25px;
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 1em;
+    cursor: pointer;
+    float: right;
+}
+
+.clear-btn:hover {
+    background-color: #5a6268;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .log-btn, .clear-btn {
+        float: none;
+        display: block;
+        width: 100%;
+        margin: 10px 0;
+    }
+    .clear-btn {
+        margin-top: 0;
+    }
+}
+
+/* attendance status colors + row highlights */
+.att-status {
+  font-weight: 600;
+  padding: 8px 10px;
+  border-radius: 6px;
+  display: inline-block;
+}
+
+/* badges */
+.att-on-time {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+.att-late {
+  background: #fffbeb;
+  color: #92400e;
+  border: 1px solid #facc15;
+}
+.att-not-logged {
+  background: #fff1f2;
+  color: #7f1d1d;
+  border: 1px solid #fca5a5;
+}
+
+/* row background tints */
+.att-row-on-time td { background: rgba(16,185,129,0.03); }   /* faint green */
+.att-row-late td    { background: rgba(245,158,11,0.03); }   /* faint amber */
+.att-row-miss td, .att-row-missed td { background: rgba(239,68,68,0.03); }    /* faint red */

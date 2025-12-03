@@ -1,0 +1,72 @@
+<!-- public/admin_dashboard.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Admin Dashboard</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/admin_dashboard.css" />
+</head>
+<body>
+  <header>
+      <h1>Admin Dashboard</h1>
+      <button id="logoutBtn" style="position:absolute;right:16px;top:18px;padding:8px 12px;">Logout</button>
+  </header>
+
+  <main style="padding:24px;">
+      <div class="admin-grid">
+          <div class="nav-link-card new-request">
+              <h3>New Requests</h3>
+              <p>Approve or reject new user registrations.</p>
+              <a href="/admin/new-requests">Go to Requests</a>
+          </div>
+
+          <div class="nav-link-card calendar-link">
+              <h3>Calendar & Data</h3>
+              <p>View and manage attendance data by date.</p>
+              <a href="/admin/calendar">Go to Calendar</a>
+          </div>
+
+          <div class="panel users-logis">
+            <h3>Recent Activity</h3>
+            <div class="users-list">
+                <ul id="recentActivityList">
+                    <li style="color:#666;padding:10px;">Loading recent activity...</li>
+                </ul>
+            </div>
+        </div>
+      </div>
+
+      <div class="attendance-container">
+          <div class="attendance-panel">
+              <h2>Attendance Records</h2>
+
+            <div style="display:flex;align-items:center;gap:12px;margin:12px 20px;">
+                <label for="attendanceDate" style="font-weight:bold;">Date:</label>
+                <input type="date" id="attendanceDate" />
+                <button class="log-btn" id="refreshBtn">Refresh</button>
+            </div>
+
+              <table id="attendanceTable">
+                  <thead>
+                      <tr>
+                          <th>Name</th>
+                          <th>Login ID</th>
+                          <th>Status</th>
+                          <th>Timestamp</th>
+                      </tr>
+                  </thead>
+                  <tbody id="attendanceTbody">
+                      <!-- populated by JS -->
+                  </tbody>
+              </table>
+
+              <button class="clear-btn" id="clearBtn">Clear All Records</button>
+          </div>
+      </div>
+  </main>
+
+  <script src="/js/admin_dashboard.js"></script>
+</body>
+</html>

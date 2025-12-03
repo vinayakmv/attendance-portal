@@ -1,0 +1,47 @@
+<!-- public/calendar.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Attendance Calendar</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <style>
+    .calendar-container { max-width:800px;margin:30px auto;padding:20px;background:#fff;border-radius:8px; }
+    .back-link { display:inline-block;margin-bottom:20px;text-decoration:none;color:#555;font-weight:bold;padding:5px 10px;border:1px solid #ccc;border-radius:4px; }
+    .date-selector { display:flex;gap:20px;margin-bottom:30px;padding:15px;border:1px dashed #ccc;border-radius:6px; }
+    .data-display { padding:15px;min-height:150px;border:1px solid #ddd;border-radius:6px;background:#f0f0f0; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Attendance Data View</h1>
+    <button onclick="window.location.href='/admin/dashboard'" style="position:absolute;right:16px;top:18px;padding:8px 12px;">Back</button>
+  </header>
+
+  <main>
+    <div class="calendar-container">
+      <a href="/admin/dashboard" class="back-link">&larr; Back to Admin Dashboard</a>
+
+      <h2>Select Date and Time</h2>
+      <div class="date-selector">
+        <div>
+          <label for="selectedDate" style="display:block;font-weight:bold;">Select Date:</label>
+          <input type="date" id="selectedDate" onchange="fetchData()" />
+        </div>
+        <div>
+          <label for="selectedTime" style="display:block;font-weight:bold;">Select Time (Optional):</label>
+          <input type="time" id="selectedTime" onchange="fetchData()" />
+        </div>
+      </div>
+
+      <h3>Attendance Log for Selected Date:</h3>
+      <div id="attendanceData" class="data-display">
+        <p>Please select a date above to view attendance records.</p>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/calendar.js"></script>
+</body>
+</html>

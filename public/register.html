@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Create New Account</title>
+
+  <!-- Optional: include your site CSS instead of the inline block -->
+  <link rel="stylesheet" href="/css/style.css">
+
+  <style>
+    /* small page-specific styles to make form look tidy */
+    body {
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: #f4f7fb;
+      margin: 0;
+      color: #222;
+    }
+    .page {
+      max-width: 920px;
+      margin: 40px auto;
+      padding: 24px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 8px 30px rgba(20,30,50,0.06);
+      padding: 28px;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+    p.lead {
+      margin: 0 0 20px;
+      color: #6b7280;
+    }
+
+    .form-row { margin-bottom: 16px; }
+    label { display:block; margin-bottom: 8px; font-weight:600; color:#334155; }
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="tel"],
+    input[type="search"] {
+      width:100%;
+      padding:12px 14px;
+      border:1px solid #e6e9ef;
+      border-radius:8px;
+      box-sizing:border-box;
+      font-size:15px;
+      background:#fbfdff;
+    }
+
+    .radio-row { display:flex; gap:18px; align-items:center; margin-top:8px; }
+    .radio-row label { font-weight:500; display:flex; gap:8px; align-items:center; color:#334155; cursor:pointer; }
+    .radio-row input { width:auto; }
+
+    .actions { display:flex; align-items:center; gap:20px; margin-top:18px; }
+    .btn {
+      background: linear-gradient(180deg,#15803d,#0b6b2b);
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: 10px;
+      border: none;
+      font-weight:700;
+      cursor:pointer;
+      box-shadow: 0 6px 18px rgba(21,128,61,0.18);
+    }
+    .link { color:#2563eb; text-decoration:none; font-weight:600; }
+    #registerMessage { margin-top:12px; min-height:20px; font-weight:600; }
+
+    @media (max-width:600px){
+      .actions { flex-direction:column; align-items:stretch; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="card" role="main" aria-labelledby="createAccountHeading">
+      <h1 id="createAccountHeading">Create New Account</h1>
+      <p class="lead">Register as an employee or admin. Admin accounts require a server invite code.</p>
+
+      <!-- Form: posts to /register (fallback). JS will capture and POST JSON to /register -->
+      <form id="registerForm" action="/register" method="POST" novalidate>
+        <div class="form-row">
+          <label for="name">Full name</label>
+          <input id="name" name="name" type="text" placeholder="Your full name" required autocomplete="name" />
+        </div>
+
+        <div class="form-row">
+          <label for="email">Username (email)</label>
+          <input id="email" name="email" type="email" placeholder="you@example.com" required autocomplete="email" />
+        </div>
+
+        <div class="form-row">
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" placeholder="Choose a password" required autocomplete="new-password" />
+        </div>
+
+        <div class="form-row">
+          <label>Account type</label>
+          <div class="radio-row" role="radiogroup" aria-labelledby="createAccountHeading">
+            <label><input type="radio" name="userRole" value="student" checked /> Employee</label>
+            <label><input type="radio" name="userRole" value="admin" /> Admin</label>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label for="inviteCode">Admin invite code (only if creating an admin)</label>
+          <input id="inviteCode" name="inviteCode" type="text" placeholder="Paste admin invite code (if any)" />
+        </div>
+
+        <div class="actions">
+          <button type="submit" class="btn">Register Account</button>
+          <div>
+            <a class="link" href="/login">Already have an account? Go to Login</a>
+          </div>
+        </div>
+
+        <!-- message area (register.js will create if missing, but this helps) -->
+        <div id="registerMessage" role="status" aria-live="polite"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- load your register handler (make sure path matches: public/js/register.js) -->
+  <script src="/js/register.js"></script>
+</body>
+</html>

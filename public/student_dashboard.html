@@ -1,0 +1,32 @@
+<!-- public/student_dashboard.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Student Dashboard</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header>
+    <h1>Employee Dashboard</h1>
+    <button onclick="logout()" style="position:absolute;right:16px;top:18px;padding:8px 12px;">Logout</button>
+  </header>
+
+  <main>
+    <div class="student-dashboard" style="text-align:center;padding:30px;">
+      <h2 class="greeting" id="studentGreeting">Hello Employee!</h2>
+
+      <button class="toggle-button logged-in" id="attendanceToggle" onclick="toggleAttendance()" style="padding:15px 30px;font-size:1.2em;border-radius:8px;">
+        Clock In
+      </button>
+
+      <a href="#" class="report-link" onclick="alert('Attendance Report is Future Scope! Requires a database.')" style="display:block;margin-top:30px;">
+        Attendance Report ➡️
+      </a>
+    </div>
+  </main>
+
+  <script src="/js/student_dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+<!-- public/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Employee Attendance Log</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header>
+    <h1>Employee Attendance Log</h1>
+    <a href="/view_data" style="position:absolute;right:16px;top:18px;padding:8px 12px;">View Attendance Data</a>
+  </header>
+  <main>
+    <form id="attendanceForm" style="max-width:700px;margin:30px auto;padding:20px;">
+      <label for="employeeName">Employee Name:</label>
+      <input type="text" id="employeeName" required />
+
+      <label for="loginId">Login ID:</label>
+      <input type="text" id="loginId" required />
+
+      <div class="button-group" style="margin-top:12px;">
+        <button type="button" id="clockInBtn" onclick="logAttendance('Clock In')" style="background:#28a745;color:#fff;padding:10px 20px;border:none;border-radius:4px;">Clock In</button>
+        <button type="button" id="clockOutBtn" onclick="logAttendance('Clock Out')" style="background:#dc3545;color:#fff;padding:10px 20px;border:none;border-radius:4px;">Clock Out</button>
+      </div>
+      <p id="message" style="margin-top:20px;"></p>
+    </form>
+  </main>
+
+  <script src="/js/index.js"></script>
+</body>
+</html>
