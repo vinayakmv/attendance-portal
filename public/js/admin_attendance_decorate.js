@@ -120,3 +120,6 @@
   // expose function for manual re-run
   window.decorateAttendanceTable = decorateAttendanceTable;
 })();
+
+
+//can be deleted

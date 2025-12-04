@@ -1,4 +1,4 @@
-<!-- public/login.html -->
+<!-- public/login.html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -97,5 +97,109 @@
     </div>
 
     <script src="/js/login.js"></script>
+</body>
+</html> -->
+
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Login</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/register.css" />
+</head>
+<body>
+  <div class="page">
+    <div class="card">
+      <div class="card-head">
+        <h1>Sign in</h1>
+        <p class="muted">Enter your credentials</p>
+      </div>
+
+      <form id="loginForm" class="form" action="/api/login" method="post">
+        <div class="row">
+          <label for="email">Email</label>
+          <input id="email" name="email" type="email" required placeholder="you@example.com" />
+        </div>
+
+        <div class="row">
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" required placeholder="Your password" />
+        </div>
+
+        <div class="row">
+          <label for="batchSelect">Select Batch</label>
+          <select id="batchSelect" name="batch">
+            <option value="batch1">Batch 1 — 10:00 AM to 6:00 PM</option>
+            <option value="batch2">Batch 2 — 8:00 AM to 3:00 PM</option>
+            <option value="batch3">Batch 3 — 3:00 PM to 8:00 PM</option>
+          </select>
+        </div>
+
+        <div class="actions">
+          <button id="loginBtn" class="btn primary" type="submit">Login</button>
+          <a class="link secondary" href="/register">Register</a>
+        </div>
+
+        <div id="loginMessage" class="message"></div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // login page: submit via fetch to /api/login and then persist batch via optional endpoint
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const batch = document.getElementById('batchSelect').value;
+
+      const msg = document.getElementById('loginMessage');
+      msg.textContent = 'Logging in…';
+
+      try {
+        const r = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ email, password })
+        });
+        const j = await r.json().catch(()=>null);
+        if (!r.ok) {
+          msg.style.color = 'crimson';
+          msg.textContent = j && j.message ? j.message : `Login failed (${r.status})`;
+          return;
+        }
+
+        // Optionally persist selected batch for this user (server snippet below needed to actually save)
+        try {
+          await fetch('/api/me/update-batch', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ batch })
+          });
+        } catch (err) {
+          // ignore errors — endpoint is optional
+          console.warn('update-batch failed or not available', err);
+        }
+
+        msg.style.color = '#0f766e';
+        msg.textContent = 'Login successful — redirecting…';
+        // redirect by role returned in API if available
+        const role = (j && j.role) ? j.role : 'student';
+        setTimeout(() => {
+          if (role === 'admin') window.location.href = '/admin/dashboard';
+          else window.location.href = '/student';
+        }, 600);
+      } catch (err) {
+        console.error('login error', err);
+        msg.style.color = 'crimson';
+        msg.textContent = 'Network error';
+      }
+    });
+  </script>
 </body>
 </html>

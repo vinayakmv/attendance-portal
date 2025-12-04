@@ -1,72 +1,684 @@
-<!-- public/admin_dashboard.html -->
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Admin Dashboard</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title >Admin Dashboard</title>
   <link rel="stylesheet" href="/css/style.css" />
-  <link rel="stylesheet" href="/css/admin_dashboard.css" />
+  <style>
+  :root{--accent:#0786ff;--bg:#f5f6f8;--panel:#fff;--muted:#666}
+  body{font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);margin:0;color:#222}
+  header.topbar{background:linear-gradient(180deg,#46a01b,#3ca015);color:#fff;padding:22px 20px;display:flex;align-items:center;gap:12px}
+  header.topbar h1{margin:0;font-size:28px;flex:1;text-align:center}
+  .menu-btn{background:#fff3;border-radius:8px;padding:8px 10px;border:none;cursor:pointer;font-weight:600}
+  .container{max-width:1200px;margin:20px auto;padding:18px}
+  .card{background:var(--panel);border-radius:10px;padding:18px;box-shadow:0 8px 30px rgba(20,20,40,0.06)}
+
+  .main-layout{display:grid;grid-template-columns:1fr;gap:18px;align-items:start}
+  .main-layout.with-sidebar{grid-template-columns:260px 1fr}
+
+  .sidebar{
+    background:linear-gradient(180deg,#fff,#f7fbff);
+    border-radius:8px;padding:14px;
+    height:calc(100vh - 140px);
+    box-shadow:0 6px 18px rgba(10,10,40,0.04);
+    position:sticky;top:20px;
+    overflow:auto;
+    display:block;
+  }
+  .main-layout:not(.with-sidebar) .sidebar{display:none}
+
+  .sidebar .navitem{display:block;padding:10px;border-radius:8px;margin:6px 0;color:#0b69a6;cursor:pointer;font-weight:600}
+  .sidebar .navitem.active{background:linear-gradient(90deg,#e6f3ff,#eaf8ff);box-shadow:inset 0 0 0 1px rgba(7,134,255,0.08)}
+  .sidebar label{font-size:13px;color:var(--muted);display:block;margin-top:14px}
+  .sidebar select, .sidebar input[type=date]{width:100%;padding:8px;border-radius:6px;border:1px solid #e6e8eb;margin-top:6px}
+  .sidebar .small{font-size:12px;color:var(--muted);margin-top:10px}
+
+  .content{min-height:400px}
+  .toolbar{display:flex;align-items:center;gap:12px;justify-content:flex-start;margin-bottom:12px}
+  .btn{background:var(--accent);color:#fff;padding:10px 14px;border-radius:8px;border:none;cursor:pointer;font-weight:600}
+  .btn.ghost{background:transparent;color:var(--accent);border:1px solid #dbeffd}
+
+  .att-wrap{overflow:auto}
+  table.att-table{width:100%;border-collapse:collapse;margin-top:12px;table-layout:auto;min-width:820px}
+  table.att-table thead th{background:var(--accent);color:#fff;padding:12px;text-align:left}
+  table.att-table th, table.att-table td{padding:14px;border-bottom:1px solid #f0f0f0;vertical-align:middle}
+  tr.empty-row td{text-align:center;color:var(--muted)}
+
+  .badge{display:inline-block;padding:8px 10px;border-radius:8px;font-weight:700}
+  .badge.not{background:#fff0f0;color:#c33;border:1px solid #f2dede}
+  .badge.on{background:#f0fcf3;color:#04633b;border:1px solid #dff3e6}
+  .badge.late{background:#fff9ed;color:#b96600;border:1px solid #fae9c7}
+
+  /* timestamp & lunch small-card */
+  .ts-card{
+    display:inline-block;
+    background:#f6fbff;
+    border-radius:10px;
+    padding:8px 10px;
+    min-width:120px;
+    box-shadow:0 2px 6px rgba(20,40,80,0.05);
+    margin-bottom:6px;
+    border:1px solid rgba(7,134,255,0.08);
+    margin-right:8px;
+    vertical-align:top;
+  }
+  .duration-status { display:block;margin-top:6px;font-weight:800;font-size:13px;letter-spacing:0.2px }
+  .duration-status.ok{ color:#065f46 } .duration-status.over{ color:#b91c1c }
+
+  .ts-card strong{color:#0a57a0;display:block;margin-bottom:4px}
+  .ts-card .time{color:var(--muted);font-size:13px}
+
+  .ts-block{background:#fbfdff;border-radius:8px;padding:8px;margin-bottom:6px;display:inline-block}
+  .ts-block .muted{color:var(--muted);font-size:13px}
+  .lunch-ok{color:#065f46;font-weight:800;margin-left:6px}
+  .lunch-over{color:#b91c1c;font-weight:800;margin-left:6px}
+
+  /* requests list */
+  .requests-list{display:flex;flex-direction:column;gap:12px}
+  .req-card{border-radius:10px;padding:12px;background:#fff;border:1px solid #eef6ff;box-shadow:0 6px 18px rgba(10,20,40,0.03);display:flex;gap:12px;align-items:flex-start}
+  .req-info{flex:1}
+  .req-meta{color:var(--muted);font-size:13px;margin-bottom:8px}
+  .req-actions{display:flex;gap:8px;align-items:center}
+
+  @media(max-width:900px){
+    .container{padding:12px}
+    .main-layout.with-sidebar{grid-template-columns:1fr}
+    .main-layout:not(.with-sidebar) .sidebar{display:none}
+    .sidebar{height:auto;position:relative}
+    table.att-table{min-width:700px}
+    .ts-card{min-width:110px}
+  }
+
+  .row{display:flex;gap:12px;align-items:center}
+  .input{padding:8px;border-radius:6px;border:1px solid #e6e8eb}
+  .muted-small{color:var(--muted);font-size:13px}
+  .actions-right{display:flex;gap:8px;margin-left:auto}
+  .modal{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center}
+  .modal .dialog{background:#fff;padding:18px;border-radius:8px;min-width:320px}
+  </style>
 </head>
 <body>
-  <header>
-      <h1>Admin Dashboard</h1>
-      <button id="logoutBtn" style="position:absolute;right:16px;top:18px;padding:8px 12px;">Logout</button>
+  <header class="topbar">
+    <button id="openMenu" class="menu-btn">☰ Menu</button>
+    <h1>Admin Dashboard</h1>
+    <div style="width:140px;text-align:right"><button id="logoutBtn" class="menu-btn">Logout</button></div>
   </header>
 
-  <main style="padding:24px;">
-      <div class="admin-grid">
-          <div class="nav-link-card new-request">
-              <h3>New Requests</h3>
-              <p>Approve or reject new user registrations.</p>
-              <a href="/admin/new-requests">Go to Requests</a>
-          </div>
+  <div class="container">
+    <div class="card main-layout" id="mainLayout">
+      <aside class="sidebar" id="sidebar">
+        <div style="font-weight:800;color:#0a566f;margin-bottom:6px">Navigation</div>
 
-          <div class="nav-link-card calendar-link">
-              <h3>Calendar & Data</h3>
-              <p>View and manage attendance data by date.</p>
-              <a href="/admin/calendar">Go to Calendar</a>
-          </div>
+        <!-- NEW: Requests nav item (default shown when clicked) -->
+        <div class="navitem" data-view="requests">• New Requests</div>
 
-          <div class="panel users-logis">
-            <h3>Recent Activity</h3>
-            <div class="users-list">
-                <ul id="recentActivityList">
-                    <li style="color:#666;padding:10px;">Loading recent activity...</li>
-                </ul>
-            </div>
+        <div class="navitem active" data-view="attendance">• Attendance Records</div>
+        <div class="navitem" data-view="delete-user">• Manage User</div>
+        <div class="navitem" data-view="delete-record">• Delete Records (by date)</div>
+        <div class="navitem" data-view="report">• Download Report</div>
+        <div class="navitem" data-view="logout">• Logout</div>
+
+        <label for="batchFilter">Filter by Batch</label>
+        <select id="batchFilter"><option value="all">All</option><option value="batch1">Batch 1</option><option value="batch2">Batch 2</option><option value="batch3">Batch 3</option></select>
+
+        <div class="small muted-small" style="margin-top:14px">Batch timings:
+          <ul style="padding-left:16px;margin:6px 0;color:var(--muted)">
+            <li>Batch 1: 10:00 AM - 6:00 PM</li>
+            <li>Batch 2: 8:00 AM - 3:00 PM</li>
+            <li>Batch 3: 3:00 PM - 8:00 PM</li>
+          </ul>
         </div>
-      </div>
+      </aside>
 
-      <div class="attendance-container">
-          <div class="attendance-panel">
-              <h2>Attendance Records</h2>
+      <section class="content">
+        <!-- REQUESTS VIEW -->
+        <div id="view-requests" class="view" style="display:none">
+          <div class="card">
+            <h2 style="margin:0 0 8px 0;color:var(--accent)">New Requests</h2>
+            <p class="muted-small">Approve or reject new account/registration requests submitted by users.</p>
 
-            <div style="display:flex;align-items:center;gap:12px;margin:12px 20px;">
-                <label for="attendanceDate" style="font-weight:bold;">Date:</label>
-                <input type="date" id="attendanceDate" />
-                <button class="log-btn" id="refreshBtn">Refresh</button>
+            <div id="requestsContainer" style="margin-top:12px">
+              <!-- JS renders request cards here -->
+              <div class="muted-small">Loading requests…</div>
             </div>
-
-              <table id="attendanceTable">
-                  <thead>
-                      <tr>
-                          <th>Name</th>
-                          <th>Login ID</th>
-                          <th>Status</th>
-                          <th>Timestamp</th>
-                      </tr>
-                  </thead>
-                  <tbody id="attendanceTbody">
-                      <!-- populated by JS -->
-                  </tbody>
-              </table>
-
-              <button class="clear-btn" id="clearBtn">Clear All Records</button>
           </div>
-      </div>
-  </main>
+        </div>
 
-  <script src="/js/admin_dashboard.js"></script>
+        <!-- Attendance view -->
+        <div id="view-attendance" class="view">
+          <div class="toolbar">
+            <div class="row"><label for="attendanceDate" style="font-weight:700;margin-right:8px">Date</label>
+              <input id="attendanceDate" type="date" class="input" />
+            </div>
+            <div class="actions-right">
+              <button id="refreshBtn" class="btn">Refresh</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2 style="margin:0 0 6px 0;text-align:center;color:var(--accent)">Attendance Records</h2>
+            <div class="att-wrap">
+            <table class="att-table" id="attendanceTable">
+              <thead><tr><th>Name</th><th>Login ID</th><th>Status</th><th>Lunch</th><th>Timestamp</th></tr></thead>
+              <tbody id="attendanceTbody"><tr class="empty-row"><td colspan="5">Loading...</td></tr></tbody>
+            </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Delete user view -->
+<div id="view-delete-user" class="view" style="display:none">
+  <div class="card">
+    <h3>Delete User</h3>
+
+    <!-- User selection -->
+    <div class="row" style="margin-top:12px">
+      <select id="deleteUserSelect" style="flex:1;padding:10px;border-radius:6px;border:1px solid #e6e8eb"></select>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="row" style="margin-top:12px; gap:12px">
+      <button id="viewUserRecordsBtn" class="btn" style="background:#0786ff">View Records</button>
+      <button id="deleteUserBtn" class="btn" style="background:#e23b3b">Delete User</button>
+    </div>
+
+    <p class="muted-small" style="margin-top:10px">Select a user to view their monthly records or delete them completely.</p>
+
+    <!-- MONTH PICKER + FETCH -->
+    <div id="userRecordSection" style="margin-top:20px; display:none">
+      <label class="muted-small" style="font-weight:700">Select Month</label>
+      <input id="recordMonthPicker" type="month" class="input" style="max-width:200px" />
+
+      <button id="fetchMonthlyRecordsBtn" class="btn" style="margin-left:12px">Fetch Records</button>
+
+      <!-- Employee header (hidden by default) -->
+      <h4 id="userRecordHeader" style="margin-top:18px; color:#0a566f; display:none;"></h4>
+
+      <div id="userRecordResults" style="margin-top:18px"></div>
+    </div>
+  </div>
+</div>
+
+
+        <!-- Delete record view -->
+        <div id="view-delete-record" class="view" style="display:none">
+          <div class="card">
+            <h3>Delete Attendance Records by Date</h3>
+            <div class="row" style="margin-top:12px">
+              <input id="deleteDate" type="date" class="input" />
+              <select id="deleteBatchSelect" class="input"><option value="">All Batches</option><option value="batch1">Batch 1</option><option value="batch2">Batch 2</option><option value="batch3">Batch 3</option></select>
+              <button id="deleteRecordBtn" class="btn" style="background:#e23b3b">Delete</button>
+            </div>
+            <p class="muted-small" style="margin-top:10px">This will delete attendance records for the selected date (optionally filtered by batch).</p>
+          </div>
+        </div>
+
+        <!-- Report view -->
+        <div id="view-report" class="view" style="display:none">
+          <div class="card">
+            <h3>Download Report</h3>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap">
+              <label class="muted-small">Single Date</label>
+              <input id="reportDate" type="date" class="input" />
+              <button id="downloadDateBtn" class="btn">Download</button>
+            </div>
+            <hr style="margin:12px 0" />
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <label class="muted-small">Range from</label>
+              <input id="reportFrom" type="date" class="input" />
+              <label class="muted-small">to</label>
+              <input id="reportTo" type="date" class="input" />
+              <button id="downloadRangeBtn" class="btn">Download Range</button>
+            </div>
+            <p class="muted-small" style="margin-top:10px">CSV will download via existing server endpoint.</p>
+          </div>
+        </div>
+
+      </section>
+    </div>
+  </div>
+
+  <!-- Include the external admin requests loader (must exist at public/js/admin_requests.js) -->
+  <script src="/js/admin_requests.js"></script>
+
+  <script>
+    const base = window.location.origin;
+    function q(sel){return document.querySelector(sel)}
+    function formatLocalTimeOnly(ts){
+      if(!ts) return '';
+      const d = new Date(ts);
+      return d.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
+    }
+
+    /* ----------------- Attendance functions (unchanged) ----------------- */
+    async function fetchAttendance(date, batch){
+      const qstr = 'date='+encodeURIComponent(date)+(batch && batch!=='all'?('&batch='+encodeURIComponent(batch)):(''));
+      const url = base + '/api/admin/attendance-by-date?' + qstr;
+      try{
+        const r = await fetch(url, {credentials:'include'});
+        if(!r.ok){ const txt = await r.text().catch(()=>null); throw new Error(txt||('HTTP '+r.status)); }
+        return await r.json();
+      }catch(err){ console.error('fetchAttendance error',err); return { ok:false, error: err.message }}
+    }
+
+function renderAttendanceRows(list, date){
+  // helper local copy of formatMaybeTime
+  function formatMaybeTimeLocal(val){
+    if(!val && val !== 0) return null;
+    if (typeof val === 'object') { if(val.$date) return formatMaybeTimeLocal(val.$date); try { const s=String(val); const d=new Date(s); if(!isNaN(d)) return d; } catch(e){} return null; }
+    if (typeof val === 'number') { let n=val; if(n>0 && n<1e12) n=n*1000; const d=new Date(n); if(!isNaN(d)) return d; return null; }
+    if (typeof val === 'string') {
+      let s=val.trim();
+      const m = s.match(/\/Date\((\d+)\)\//); if(m){ const n=Number(m[1]); if(!isNaN(n)) return new Date(n); }
+      if(/^\d+$/.test(s)){ let n=Number(s); if(n>0 && n<1e12) n=n*1000; const d=new Date(n); if(!isNaN(d)) return d; }
+      let tryIso = s; if (s.indexOf(' ')>0 && s.indexOf('T')===-1) tryIso = s.replace(' ','T');
+      const d = new Date(tryIso); if(!isNaN(d)) return d;
+    }
+    return null;
+  }
+
+  const tbody = q('#attendanceTbody'); if(!tbody) return;
+  tbody.innerHTML = '';
+  if(!list || list.length===0){ tbody.innerHTML = '<tr class="empty-row"><td colspan="5">No students found</td></tr>'; return }
+  for(const s of list){
+    const tr = document.createElement('tr');
+    const tdName = document.createElement('td'); tdName.textContent = s.name || '';
+    const tdEmail = document.createElement('td'); tdEmail.textContent = s.email || '';
+    const tdStatus = document.createElement('td');
+    const tdLunch = document.createElement('td'); tdLunch.style.minWidth='180px';
+    const tdTime = document.createElement('td'); tdTime.style.minWidth='180px';
+
+    const status = s.status || 'logged_out';
+    const clockInDate = s.lastClockInAt ? formatMaybeTimeLocal(s.lastClockInAt) : null;
+    const clockOutDate = s.lastClockOutAt ? formatMaybeTimeLocal(s.lastClockOutAt) : null;
+
+    if(status === 'logged_out' && !clockInDate && !clockOutDate){
+      const sp = document.createElement('span'); sp.className='badge not'; sp.textContent='Not logged in'; tdStatus.appendChild(sp);
+    } else {
+      const ref = clockInDate || clockOutDate || null;
+      if(ref){
+        const parts = date.split('-').map(Number); const dead = new Date(parts[0],parts[1]-1,parts[2],10,0,0);
+        const diff = Math.round((ref - dead)/60000);
+        if(diff>0){ const sp = document.createElement('span'); sp.className='badge late'; sp.textContent='Late · '+diff+' min'; tdStatus.appendChild(sp);} else { const sp = document.createElement('span'); sp.className='badge on'; sp.textContent='On time'; tdStatus.appendChild(sp);} 
+      } else { const sp = document.createElement('span'); sp.className='badge not'; sp.textContent='Logged (time unknown)'; tdStatus.appendChild(sp); }
+    }
+
+    // Lunch: small cards - ensure end not earlier than start
+    const lunchPieces = [];
+    const lunchStartDate = s.lunchStartAt ? formatMaybeTimeLocal(s.lunchStartAt) : null;
+    const lunchEndDate = s.lunchEndAt ? formatMaybeTimeLocal(s.lunchEndAt) : null;
+    if(lunchStartDate) lunchPieces.push('<div class="ts-card"><strong>Start:</strong><div class="time">'+lunchStartDate.toLocaleTimeString([], {hour:"numeric", minute:"2-digit"})+'</div></div>');
+    if(lunchEndDate){
+      if(!lunchStartDate || lunchEndDate.getTime() >= lunchStartDate.getTime()){
+        lunchPieces.push('<div class="ts-card"><strong>End:</strong><div class="time">'+lunchEndDate.toLocaleTimeString([], {hour:"numeric", minute:"2-digit"})+'</div></div>');
+      } else {
+        // ignore invalid end earlier than start
+      }
+    }
+    if (s.lunchDurationMins != null) {
+        const dur = s.lunchDurationMins;
+        const statusClass = s.lunchOvertime ? 'over' : 'ok';
+        const statusText  = s.lunchOvertime ? 'OVERTIME' : 'OK';
+        lunchPieces.push(
+            '<div class="ts-card"><strong>Duration:</strong><div class="time">' + dur + ' min</div><div class="duration-status ' + statusClass + '">' + statusText + '</div></div>'
+        );
+    }
+    tdLunch.innerHTML = lunchPieces.length ? lunchPieces.join('') : '—';
+
+    // timestamps: In / Out (time only) - only show out if >= in
+    const tparts=[];
+    if(clockInDate) tparts.push('<div class="ts-card"><strong>In:</strong><div class="time">'+clockInDate.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})+'</div></div>');
+    if(clockOutDate){
+      if(!clockInDate || clockOutDate.getTime() >= clockInDate.getTime()){
+        tparts.push('<div class="ts-card"><strong>Out:</strong><div class="time">'+clockOutDate.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})+'</div></div>');
+      } else {
+        // skip showing out that is earlier than in
+      }
+    }
+    tdTime.innerHTML = tparts.join('') || '—';
+
+    tr.appendChild(tdName); tr.appendChild(tdEmail); tr.appendChild(tdStatus); tr.appendChild(tdLunch); tr.appendChild(tdTime);
+    tbody.appendChild(tr);
+  }
+}
+
+
+    async function loadAttendance(){
+      const date = q('#attendanceDate').value || new Date().toISOString().split('T')[0];
+      const batch = q('#batchFilter').value || 'all';
+      q('#attendanceTbody').innerHTML = '<tr class="empty-row"><td colspan="5">Loading…</td></tr>';
+      const res = await fetchAttendance(date, batch==='all'?'':batch);
+      if(!res || res.ok===false){ q('#attendanceTbody').innerHTML = '<tr class="empty-row"><td colspan="5">Failed to load</td></tr>'; return }
+      renderAttendanceRows(res.list || [], date);
+      populateDeleteUserDropdown(res.list || []);
+    }
+
+    function populateDeleteUserDropdown(list){
+      const sel = q('#deleteUserSelect'); if(!sel) return; sel.innerHTML='';
+      if(!list || list.length===0){ sel.innerHTML='<option value="">No users available for selected date</option>'; return; }
+      sel.innerHTML = '<option value="">Select user to delete</option>' + list.map(u=>`<option value="${u._id}">${u.name} — ${u.email}</option>`).join('');
+    }
+
+    async function deleteUser(){
+      const id = q('#deleteUserSelect').value; if(!id) return alert('Select a user');
+      if(!confirm('Delete user and all their attendance records?')) return;
+      try{
+        const r = await fetch(base + '/api/admin/user/' + encodeURIComponent(id), { method: 'DELETE', credentials:'include' });
+        const j = await r.json().catch(()=>null);
+        if(!r.ok) return alert((j && j.message) ? j.message : 'Delete failed');
+        alert('User deleted'); loadAttendance();
+      }catch(e){ console.error(e); alert('Network error') }
+    }
+
+    async function deleteRecords(){
+      const date = q('#deleteDate').value; if(!date) return alert('Pick a date');
+      const batch = q('#deleteBatchSelect').value || '';
+      if(!confirm('Delete attendance records for '+date+(batch?(' ('+batch+')'):'' )+' ?')) return;
+      try{
+        const url = base + '/api/admin/attendance?date='+encodeURIComponent(date) + (batch?('&batch='+encodeURIComponent(batch)): '');
+        const r = await fetch(url, { method: 'DELETE', credentials:'include' });
+        const j = await r.json().catch(()=>null);
+        if(!r.ok) return alert((j && j.message) ? j.message : 'Delete failed');
+        alert('Deleted ' + (j.deleted || 0) + ' records'); loadAttendance();
+      }catch(e){ console.error(e); alert('Network error') }
+    }
+
+    function downloadReportSingle(){ const date = q('#reportDate').value; if(!date) return alert('Pick date'); window.location = base + '/admin/report?date=' + encodeURIComponent(date); }
+    function downloadReportRange(){ const from = q('#reportFrom').value; const to = q('#reportTo').value; if(!from || !to) return alert('Pick from and to'); window.location = base + '/admin/report?from=' + encodeURIComponent(from) + '&to=' + encodeURIComponent(to); }
+
+    function showView(name){
+      document.querySelectorAll('.view').forEach(v=>v.style.display='none');
+      const el = document.getElementById('view-'+name);
+      if(el) el.style.display='block';
+      document.querySelectorAll('.sidebar .navitem').forEach(elm=>elm.classList.remove('active'));
+      const sel = document.querySelector('.sidebar .navitem[data-view="'+name+'"]');
+      if(sel) sel.classList.add('active');
+    }
+
+    /* ----------------- UI wiring & boot ----------------- */
+    document.addEventListener('DOMContentLoaded', ()=>{
+      q('#attendanceDate').value = new Date().toISOString().split('T')[0];
+      q('#openMenu').addEventListener('click', ()=>{ document.querySelector('.main-layout').classList.toggle('with-sidebar'); });
+
+      document.querySelectorAll('.sidebar .navitem').forEach(it=>it.addEventListener('click',(e)=>{
+        const view = it.getAttribute('data-view');
+        if(view==='logout'){ fetch(base + '/api/logout',{method:'POST',credentials:'include'}).catch(()=>{}); window.location.href='/login'; return; }
+        showView(view);
+        // if requests view shown, load requests via external loader
+        if(view === 'requests') {
+          if (typeof loadAdminRequests === 'function') {
+            loadAdminRequests('requestsContainer');
+          } else {
+            // fallback: show message (admin_requests.js might not be present)
+            const c = q('#requestsContainer');
+            if (c) c.innerHTML = '<div style="color:crimson">Requests loader not available. Ensure /js/admin_requests.js is included.</div>';
+          }
+        }
+      }));
+
+      q('#batchFilter').addEventListener('change', loadAttendance);
+      q('#refreshBtn').addEventListener('click', loadAttendance);
+      q('#deleteUserBtn') && q('#deleteUserBtn').addEventListener('click', deleteUser);
+      q('#deleteRecordBtn') && q('#deleteRecordBtn').addEventListener('click', deleteRecords);
+      q('#downloadDateBtn') && q('#downloadDateBtn').addEventListener('click', downloadReportSingle);
+      q('#downloadRangeBtn') && q('#downloadRangeBtn').addEventListener('click', downloadReportRange);
+      q('#logoutBtn') && q('#logoutBtn').addEventListener('click', ()=>{ fetch(base + '/api/logout',{method:'POST',credentials:'include'}).catch(()=>{}); window.location.href='/login'; });
+
+      showView('attendance');
+      loadAttendance();
+
+      // poll attendance periodically (keeps admin fairly fresh)
+      setInterval(loadAttendance, 60000);
+    });
+
+    /* ----- storage listener so other tabs refresh immediately ----- */
+    window.addEventListener('storage', (ev) => {
+      if (!ev.key) return;
+      if (ev.key === 'gspl_attendance_update' || ev.key === 'gspl_new_requests_update') {
+        try {
+          const currentView = document.querySelector('.sidebar .navitem.active')?.getAttribute('data-view');
+          if (currentView === 'attendance') {
+            loadAttendance();
+          }
+          // also reload requests if on requests tab
+          if (currentView === 'requests' && typeof loadAdminRequests === 'function') loadAdminRequests('requestsContainer');
+        } catch (e) { console.error(e); }
+      }
+    });
+
+    /* =========================
+   VIEW MONTHLY RECORDS
+========================= */
+
+    // Helper to format unknown timestamp shapes to readable time (or '-' on failure)
+    function formatMaybeTime(val) {
+      if (val === null || val === undefined || val === '') return '-';
+
+      // If it's an object like { $date: 1234567890 } or { $date: "ISO string" }
+      if (typeof val === 'object') {
+        if (val.$date) return formatMaybeTime(val.$date);
+        // try JSON string / toString
+        try {
+          const s = String(val);
+          const d = new Date(s);
+          if (!isNaN(d)) return d.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
+        } catch (e) {}
+        return '-';
+      }
+
+      // If it's a number (seconds or ms)
+      if (typeof val === 'number') {
+        let n = val;
+        // if likely seconds (10 digits) convert to ms
+        if (n > 0 && n < 1e12) n = n * 1000;
+        const d = new Date(n);
+        if (!isNaN(d)) return d.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
+        return '-';
+      }
+
+      // if it's a string
+      if (typeof val === 'string') {
+        let s = val.trim();
+
+        // Some servers send "/Date(170...)/" or JSON-serialized forms. try to extract digits
+        const m = s.match(/\/Date\((\d+)\)\//);
+        if (m) {
+          const n = Number(m[1]);
+          if (!isNaN(n)) { const d = new Date(n); if (!isNaN(d)) return d.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}); }
+        }
+
+        // If numeric string
+        if (/^\d+$/.test(s)) {
+          let n = Number(s);
+          if (n > 0 && n < 1e12) n = n * 1000;
+          const d = new Date(n);
+          if (!isNaN(d)) return d.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
+        }
+
+        // Try to normalize common non-ISO format: replace space with 'T'
+        let tryIso = s;
+        if (s.indexOf(' ') > 0 && s.indexOf('T') === -1) {
+          tryIso = s.replace(' ', 'T');
+        }
+
+        // final attempt
+        const d = new Date(tryIso);
+        if (!isNaN(d)) return d.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
+
+        // as last resort, return original string (so you can see what was returned)
+        return s || '-';
+      }
+
+      return '-';
+    }
+
+    // Helper to produce yyyy-mm-dd (or '-') from various shapes
+    function formatMaybeDate(val) {
+      if (val === null || val === undefined || val === '') return '-';
+
+      if (typeof val === 'object') {
+        if (val.$date) return formatMaybeDate(val.$date);
+        try {
+          const s = String(val);
+          const d = new Date(s);
+          if (!isNaN(d)) return d.toISOString().slice(0,10);
+        } catch (e) {}
+        return '-';
+      }
+
+      if (typeof val === 'number') {
+        let n = val;
+        if (n > 0 && n < 1e12) n = n * 1000;
+        const d = new Date(n);
+        if (!isNaN(d)) return d.toISOString().slice(0,10);
+        return '-';
+      }
+
+      if (typeof val === 'string') {
+        let s = val.trim();
+        // direct yyyy-mm-dd?
+        if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+        // if ISO-like
+        const d = new Date(s.replace(' ', 'T'));
+        if (!isNaN(d)) return d.toISOString().slice(0,10);
+        // if numeric timestamp
+        if (/^\d+$/.test(s)) {
+          let n = Number(s);
+          if (n > 0 && n < 1e12) n = n * 1000;
+          const d2 = new Date(n);
+          if (!isNaN(d2)) return d2.toISOString().slice(0,10);
+        }
+        return s || '-';
+      }
+
+      return '-';
+    }
+
+    // Show month picker and clear previous header/results when admin clicks "View Records"
+    const viewBtn = document.getElementById('viewUserRecordsBtn');
+    if (viewBtn) {
+      viewBtn.addEventListener('click', () => {
+        const userId = q('#deleteUserSelect').value;
+        if (!userId) {
+          alert('Select a user first');
+          return;
+        }
+
+        // reset fields & show month picker section
+        document.getElementById('userRecordSection').style.display = 'block';
+        document.getElementById('userRecordResults').innerHTML = '';
+        const headerEl = document.getElementById('userRecordHeader');
+        if (headerEl) { headerEl.style.display = 'none'; headerEl.textContent = ''; }
+
+        // reset month picker to current month by default
+        const mp = document.getElementById('recordMonthPicker');
+        if (mp) {
+          const now = new Date();
+          const monthVal = now.toISOString().slice(0,7);
+          mp.value = monthVal;
+        }
+      });
+    }
+
+    // Helper: format month YYYY-MM to "MonthName, YYYY"
+    function formatMonthReadable(ym) {
+      if (!ym) return ym;
+      const [y,m] = ym.split('-').map(Number);
+      const d = new Date(y, m-1, 1);
+      return d.toLocaleString(undefined, { month: 'long', year: 'numeric' });
+    }
+
+    const fetchBtn = document.getElementById('fetchMonthlyRecordsBtn');
+    if (fetchBtn) {
+      fetchBtn.addEventListener('click', async () => {
+        const userSel = q('#deleteUserSelect');
+        const userId = userSel ? userSel.value : null;
+        const month = document.getElementById('recordMonthPicker').value;
+
+        if (!userId) return alert('Select user first');
+        if (!month) return alert('Select month');
+
+        // derive user name from option text (format: "Name — email")
+        let selectedUserName = '';
+        try {
+          const text = userSel.options[userSel.selectedIndex].text || '';
+          selectedUserName = text.split('—')[0].trim() || text.trim();
+        } catch (e) {
+          selectedUserName = '';
+        }
+
+        const [year, mon] = month.split('-');
+        const url = `${base}/api/admin/user-records?user=${encodeURIComponent(userId)}&year=${encodeURIComponent(year)}&month=${encodeURIComponent(mon)}`;
+
+        const resultBox = document.getElementById('userRecordResults');
+        resultBox.innerHTML = '<div class="muted-small">Loading records...</div>';
+
+        try {
+          const r = await fetch(url, { credentials: 'include' });
+          const j = await r.json().catch(()=>null);
+
+          // DEBUG: show one sample record in console so we can tune parsing if needed
+          console.log('records sample:', j && j.records && j.records[0]);
+
+          // set header (show employee name + readable month)
+          const headerEl = document.getElementById('userRecordHeader');
+          const readableMonth = formatMonthReadable(month);
+          if (headerEl) {
+            headerEl.textContent = `Attendance Records for: ${selectedUserName} — ${readableMonth}`;
+            headerEl.style.display = 'block';
+          }
+
+          if (!r.ok) {
+            resultBox.innerHTML = `<div style="color:red">Error: ${(j && j.message) ? j.message : 'Failed to load'}</div>`;
+            return;
+          }
+
+          const records = (j && j.records) ? j.records : [];
+          if (!records.length) {
+            resultBox.innerHTML = '<div class="muted-small">No records found for this month.</div>';
+            return;
+          }
+
+          // Render records table using robust formatters
+          let html = `<table class="att-table"><thead>
+                       <tr><th>Date</th><th>Clock In</th><th>Clock Out</th><th>Lunch Start</th><th>Lunch End</th></tr>
+                     </thead><tbody>`;
+
+          records.forEach(rec => {
+            // use formatMaybeTime / formatMaybeDate for robust parsing
+            const ci = formatMaybeTime(rec.clockIn);
+            const co = formatMaybeTime(rec.clockOut);
+            const ls = formatMaybeTime(rec.lunchStart);
+            const le = formatMaybeTime(rec.lunchEnd);
+
+            // determine date cell: prefer rec.date, rec.day or derive from clockIn/out
+            let dateVal = '-';
+            if (rec.date) dateVal = rec.date;
+            else if (rec.day) dateVal = rec.day;
+            else if (rec.clockIn) dateVal = formatMaybeDate(rec.clockIn);
+            else if (rec.clockOut) dateVal = formatMaybeDate(rec.clockOut);
+            else dateVal = '-';
+
+            html += `<tr>
+                       <td>${dateVal}</td>
+                       <td>${ci}</td>
+                       <td>${co}</td>
+                       <td>${ls}</td>
+                       <td>${le}</td>
+                     </tr>`;
+          });
+
+          html += '</tbody></table>';
+          resultBox.innerHTML = html;
+
+        } catch (e) {
+          console.error(e);
+          resultBox.innerHTML = '<div style="color:red">Network error</div>';
+        }
+      });
+    }
+
+  </script>
 </body>
 </html>

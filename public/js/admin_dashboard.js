@@ -1,359 +1,243 @@
 // public/js/admin_dashboard.js
-// Consolidated admin dashboard client that calls /api/admin/... endpoints
-// and renders color-coded attendance rows + recent activity.
-//
-// Updated to display both Clock In and Clock Out times and compute lateness
-// based on clock-in time (lastClockInAt).
+// Admin dashboard client - fetches attendance and renders table
+const POLL_INTERVAL_MS = 10000;
 
-const POLL_INTERVAL_MS = 5000;
-const DEADLINE_HOUR = 10;   // 10 AM
-const DEADLINE_MINUTE = 0;
-
-function escapeHtml(s) {
-  if (!s) return '';
-  return String(s).replace(/[&<>"'`]/g, c =>
-    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c])
-  );
-}
-function formatLocal(ts) {
+function formatLocal(ts){
   if (!ts) return '';
   const d = new Date(ts);
   return d.toLocaleString();
 }
-function formatDateYYYYMMDD(dt = new Date()) {
+function formatDateYYYYMMDD(dt=new Date()){
   const yyyy = dt.getFullYear();
-  const mm = String(dt.getMonth() + 1).padStart(2, '0');
-  const dd = String(dt.getDate()).padStart(2, '0');
+  const mm = String(dt.getMonth()+1).padStart(2,'0');
+  const dd = String(dt.getDate()).padStart(2,'0');
   return `${yyyy}-${mm}-${dd}`;
 }
 
-// --- Fetch helpers that expect JSON responses ---
-async function fetchAttendance(date) {
+async function fetchAttendance(date, batch){
   try {
-    const r = await fetch(`/api/admin/attendance-by-date?date=${encodeURIComponent(date)}`, {
-      credentials: 'include',
-      headers: { 'Accept': 'application/json' }
-    });
-    // if server returned HTML (e.g. a login page), treat as error
-    const ct = r.headers.get('content-type') || '';
+    const base = window.location.origin;
+    const q = `date=${encodeURIComponent(date || formatDateYYYYMMDD())}` + (batch && batch !== 'all' ? `&batch=${encodeURIComponent(batch)}` : '');
+    const url = `${base}/api/admin/attendance-by-date?${q}`;
+    const r = await fetch(url, { credentials:'include', headers:{ 'Accept':'application/json' }});
     if (!r.ok) {
-      if (ct.includes('application/json')) {
-        const j = await r.json().catch(()=>null);
-        return { ok:false, status:r.status, text: j && j.message ? j.message : `HTTP ${r.status}` };
-      }
       const txt = await r.text().catch(()=>null);
-      return { ok:false, status:r.status, text: txt || `HTTP ${r.status}` };
-    }
-    if (!ct.includes('application/json')) {
-      const txt = await r.text().catch(()=>null);
-      return { ok:false, status:r.status, text: txt || 'Unexpected non-JSON response' };
+      throw new Error(txt || `HTTP ${r.status}`);
     }
     const j = await r.json();
-    return { ok:true, list: j.list || [], date: j.date };
+    return j;
   } catch (err) {
     console.error('fetchAttendance error', err);
-    return { ok:false, error: err.message || 'Network error' };
+    throw err;
   }
 }
 
-async function fetchRecentActivity() {
-  try {
-    const r = await fetch('/api/admin/recent-activity', {
-      credentials: 'include',
-      headers: { 'Accept': 'application/json' }
-    });
-    const ct = r.headers.get('content-type') || '';
-    if (!r.ok) {
-      if (ct.includes('application/json')) {
-        const j = await r.json().catch(()=>null);
-        return { ok:false, text: j && j.message ? j.message : `HTTP ${r.status}` };
-      }
-      const txt = await r.text().catch(()=>null);
-      return { ok:false, text: txt || `HTTP ${r.status}` };
-    }
-    if (!ct.includes('application/json')) {
-      const txt = await r.text().catch(()=>null);
-      return { ok:false, text: txt || 'Unexpected non-JSON response' };
-    }
-    const j = await r.json();
-    return { ok:true, list: j.list || [] };
-  } catch (err) {
-    console.error('fetchRecentActivity error', err);
-    return { ok:false, error: err.message || 'Network' };
-  }
+function clearTable(){
+  const tbody = document.getElementById('attendanceTbody');
+  if (tbody) tbody.innerHTML = '';
 }
 
-// --- Render helpers ---
-function showInlineMessage(containerSelector, message, color = '#666') {
-  const container = document.querySelector(containerSelector);
-  if (!container) return;
-  const old = container.querySelector('.inline-msg');
-  if (old) old.remove();
-  const div = document.createElement('div');
-  div.className = 'inline-msg';
-  div.style.color = color;
-  div.style.padding = '8px 12px';
-  div.textContent = message;
-  container.insertBefore(div, container.querySelector('table') || container.firstChild);
-}
-function clearInlineMessage(containerSelector) {
-  const container = document.querySelector(containerSelector);
-  if (!container) return;
-  const old = container.querySelector('.inline-msg');
-  if (old) old.remove();
-}
-
-function renderRecentActivityList(ul, list) {
-  ul.innerHTML = '';
-  if (!list || list.length === 0) {
-    const li = document.createElement('li');
-    li.style.color = '#666';
-    li.style.padding = '10px';
-    li.textContent = 'No recent activity.';
-    ul.appendChild(li);
-    return;
-  }
-  list.forEach(item => {
-    const li = document.createElement('li');
-    li.style.padding = '10px 0';
-    li.style.borderBottom = '1px dashed #ddd';
-    const time = item.timestamp ? new Date(item.timestamp).toLocaleString() : '';
-    const action = item.status === 'logged_in' ? 'Clocked In' : 'Clocked Out';
-    li.innerHTML = `<strong>${escapeHtml(item.name)}</strong> (${escapeHtml(item.email)}) &nbsp;→&nbsp; ${action}
-                    <div style="font-size:0.85em;color:#666;margin-top:4px;">${time}</div>`;
-    ul.appendChild(li);
-  });
-}
-
-/**
- * renderAttendanceRows
- * - Renders the table body for attendance.
- * - Uses lastClockInAt and lastClockOutAt if present.
- * - Determines on-time vs late based on clock-in (first clock-in of day).
- */
-// Replace your existing renderAttendanceRows(...) with this improved version
-
-function renderAttendanceRows(tbody, list, dateStr) {
+function renderAttendanceRows(list, dateStr, batchDeadlines = {}){
+  const tbody = document.getElementById('attendanceTbody');
+  if (!tbody) return;
   tbody.innerHTML = '';
 
-  // construct deadline date object in local timezone
-  const parts = dateStr.split('-').map(Number);
-  const deadline = new Date(parts[0], parts[1]-1, parts[2], DEADLINE_HOUR, DEADLINE_MINUTE, 0);
-
-  if (!list || list.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="4">No students found for ${dateStr}</td></tr>`;
+  if (!list || !list.length){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td colspan="5" style="padding:28px;text-align:center;color:#666">No students found for ${dateStr}</td>`;
+    tbody.appendChild(tr);
     return;
   }
+
+  const parts = dateStr.split('-').map(Number);
 
   list.forEach(student => {
     const tr = document.createElement('tr');
 
-    // Name
+    // name
     const tdName = document.createElement('td');
     tdName.textContent = student.name || '';
     tr.appendChild(tdName);
 
-    // Login ID (email)
+    // login id
     const tdEmail = document.createElement('td');
     tdEmail.textContent = student.email || '';
     tr.appendChild(tdEmail);
 
-    // Status and Timestamp columns
+    // status
     const tdStatus = document.createElement('td');
+    const statusBadge = document.createElement('span');
+    statusBadge.className = 'att-status';
+    const clockIn = student.lastClockInAt ? new Date(student.lastClockInAt) : null;
+    const clockOut = student.lastClockOutAt ? new Date(student.lastClockOutAt) : null;
+
+    // compute deadline for this student's batch
+    function deadlineForBatch(studentBatch){
+      const cfg = (batchDeadlines && batchDeadlines[studentBatch]) ? batchDeadlines[studentBatch] : null;
+      if (!cfg) return new Date(parts[0], parts[1]-1, parts[2], 10, 0, 0);
+      return new Date(parts[0], parts[1]-1, parts[2], cfg.hour, cfg.minute || 0, 0);
+    }
+
+    const studentBatch = student.batch || 'batch1';
+    const ddl = deadlineForBatch(studentBatch);
+    let refTime = clockIn || clockOut || null;
+
+    if (!refTime){
+      statusBadge.classList.add('att-not-logged');
+      statusBadge.textContent = 'Not logged in';
+    } else {
+      if (refTime <= ddl){
+        statusBadge.classList.add('att-on-time');
+        statusBadge.textContent = 'On time';
+      } else {
+        statusBadge.classList.add('att-late');
+        const diff = Math.round((refTime - ddl)/60000);
+        statusBadge.textContent = `Late · ${diff} min`;
+      }
+    }
+    tdStatus.appendChild(statusBadge);
+    tr.appendChild(tdStatus);
+
+    // lunch cell - we will show simple OK / OVERTIME
+    const tdLunch = document.createElement('td');
+    if (student.lunchStartAt || student.lunchEndAt || student.lunchDurationMins != null){
+      const div = document.createElement('div');
+      div.style.fontSize='0.95em';
+      if (student.lunchStartAt) div.innerHTML += `<div><strong>Start:</strong> ${formatLocal(student.lunchStartAt)}</div>`;
+      if (student.lunchEndAt) div.innerHTML += `<div><strong>End:</strong> ${formatLocal(student.lunchEndAt)}</div>`;
+      if (student.lunchDurationMins != null){
+        const dur = `${student.lunchDurationMins} min`;
+        if (student.lunchOvertime){
+          div.innerHTML += `<div><strong>Lunch:</strong> ${dur} <span class="lunch-overtime">OVERTIME</span></div>`;
+        } else {
+          div.innerHTML += `<div><strong>Lunch:</strong> ${dur} <span class="lunch-ok">OK</span></div>`;
+        }
+      }
+      tdLunch.appendChild(div);
+    } else {
+      tdLunch.textContent = '—';
+      tdLunch.style.color = '#777';
+    }
+    tr.appendChild(tdLunch);
+
+    // timestamp cell: nice in/out blocks
     const tdTime = document.createElement('td');
 
-    // Robust detection of "clock in / clock out" timestamps.
-    // Accept multiple possible field names (in case backend uses different names).
-    const clockInCandidates = [
-      student.lastClockInAt, student.clockInAt, student.firstClockInAt,
-      student.clockIn, student.firstLoggedInAt, student.firstToggledAt
-    ];
-    const clockOutCandidates = [
-      student.lastClockOutAt, student.clockOutAt, student.lastToggledOutAt,
-      student.clockOut
-    ];
-
-    // pick first valid date-like value from candidates
-    function pickDate(cands) {
-      for (const v of cands) {
-        if (!v) continue;
-        const d = new Date(v);
-        if (!isNaN(d.getTime())) return d;
-      }
-      return null;
+    if (clockIn){
+      const inDiv = document.createElement('div');
+      inDiv.className = 'ts-block ts-in';
+      // show without seconds (use toLocaleString but drop seconds) - use options
+      const inTxt = new Date(clockIn).toLocaleString(undefined, { year:'numeric', month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' });
+      inDiv.innerHTML = `<strong>In:</strong> ${inTxt}`;
+      tdTime.appendChild(inDiv);
     }
-
-    let clockIn = pickDate(clockInCandidates);
-    let clockOut = pickDate(clockOutCandidates);
-
-    // fallback: if neither found but there is lastToggledAt, use it depending on status
-    if (!clockIn && !clockOut && student.lastToggledAt) {
-      const lt = new Date(student.lastToggledAt);
-      if (!isNaN(lt.getTime())) {
-        if (student.status === 'logged_in') clockIn = lt;
-        else if (student.status === 'logged_out') clockOut = lt;
-      }
+    if (clockOut){
+      const outDiv = document.createElement('div');
+      outDiv.className = 'ts-block ts-out';
+      const outTxt = new Date(clockOut).toLocaleString(undefined, { year:'numeric', month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' });
+      outDiv.innerHTML = `<strong>Out:</strong> ${outTxt}`;
+      tdTime.appendChild(outDiv);
     }
-
-    // If status is logged_out but we have an earlier clockIn recorded in the same attendance object
-    // some backends might store both in different fields; we already try to pick them above.
-
-    // Now decide what to render.
-
-    // Case: never logged in today (no clockIn & status logged_out or undefined)
-    if ((!clockIn && !clockOut) && (!student || student.status === 'logged_out')) {
-      const span = document.createElement('span');
-      span.className = 'att-status att-not-logged';
-      span.textContent = 'Not logged in';
-      tdStatus.appendChild(span);
-      tdTime.textContent = ''; // empty for no activity
-      tr.classList.add('att-row-miss', 'att-row-missed');
-    } else {
-      // If there is a clockIn — use it to compute on-time / late
-      if (clockIn) {
-        if (clockIn <= deadline) {
-          const span = document.createElement('span');
-          span.className = 'att-status att-on-time';
-          span.textContent = 'On time';
-          tdStatus.appendChild(span);
-          tr.classList.add('att-row-on-time');
-        } else {
-          const diffMin = Math.round((clockIn - deadline) / 60000);
-          const span = document.createElement('span');
-          span.className = 'att-status att-late';
-          span.textContent = `Late • ${diffMin} min`;
-          tdStatus.appendChild(span);
-          tr.classList.add('att-row-late');
-        }
-      } else {
-        // No clockIn but maybe clockOut (edge case) or unknown time
-        const span = document.createElement('span');
-        span.className = 'att-status att-not-logged';
-        span.textContent = 'Logged (time unknown)';
-        tdStatus.appendChild(span);
-        tr.classList.add('att-row-miss', 'att-row-missed');
-      }
-
-      // Timestamp column: show In and Out lines if available
-      const parts = [];
-      if (clockIn) parts.push(`In: ${formatLocal(clockIn)}`);
-      if (clockOut) parts.push(`Out: ${formatLocal(clockOut)}`);
-      tdTime.textContent = parts.join('  •  ');
-
-      // If the user is currently logged_out (i.e., they clocked out later),
-      // still display the status badge according to whether they were late/on-time at clockIn.
-      // If the user has no clockIn (but has clockOut) keep the badge as logged (unknown).
+    if (!clockIn && !clockOut){
+      tdTime.textContent = '—';
+      tdTime.style.color = '#777';
     }
-
-    tr.appendChild(tdStatus);
     tr.appendChild(tdTime);
+
     tbody.appendChild(tr);
   });
 }
 
-
-
-// --- UI actions ---
-async function loadAttendanceForSelectedDate() {
+// UI wiring
+async function loadAttendanceForSelectedDate(){
   const dateInput = document.getElementById('attendanceDate');
-  const date = (dateInput && dateInput.value) ? dateInput.value : formatDateYYYYMMDD();
-  const panelSelector = '.attendance-panel';
+  const date = dateInput && dateInput.value ? dateInput.value : formatDateYYYYMMDD();
+  const batchSelect = document.getElementById('batchFilter');
+  const batch = batchSelect ? batchSelect.value : 'all';
+
+  // show a simple loading state in tbody
   const tbody = document.getElementById('attendanceTbody');
-  if (!tbody) return;
+  if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="padding:24px;text-align:center;color:#666">Loading attendance...</td></tr>`;
 
-  showInlineMessage(panelSelector, `Loading attendance for ${date}...`, '#007bff');
-  const res = await fetchAttendance(date);
-  clearInlineMessage(panelSelector);
-
-  if (!res.ok) {
-    console.warn('Attendance fetch failed', res);
-    // If server returned HTML, we'll show a short preview (strip tags)
-    const preview = (res.text || res.error || '').toString().replace(/<[^>]+>/g, ' ').slice(0, 400);
-    showInlineMessage(panelSelector, preview || 'Failed to load attendance', 'crimson');
-    setTimeout(()=> clearInlineMessage(panelSelector), 6000);
-    return;
-  }
-
-  // use date from response (if server provided) or our requested date
-  const dateToUse = res.date || date;
-  renderAttendanceRows(tbody, res.list, dateToUse);
-}
-
-async function loadRecentActivity() {
-  const ul = document.getElementById('recentActivityList');
-  if (!ul) return;
-  const ph = document.createElement('li');
-  ph.className = 'loading-placeholder';
-  ph.style.color = '#666';
-  ph.style.padding = '10px';
-  ph.textContent = 'Updating...';
-  ul.insertBefore(ph, ul.firstChild);
-
-  const res = await fetchRecentActivity();
-  const p = ul.querySelector('.loading-placeholder');
-  if (p) p.remove();
-
-  if (!res.ok) {
-    const preview = (res.text || res.error || '').toString().replace(/<[^>]+>/g, ' ').slice(0,400);
-    const errLi = document.createElement('li');
-    errLi.style.color = 'crimson';
-    errLi.style.padding = '8px';
-    errLi.textContent = preview || 'Failed to update recent activity';
-    ul.insertBefore(errLi, ul.firstChild);
-    setTimeout(()=> { if (errLi.parentNode) errLi.remove(); }, 4000);
-    return;
-  }
-  renderRecentActivityList(ul, res.list);
-}
-
-function clearAllRecords() {
-  if (!confirm('Are you sure you want to clear all records locally? This only clears the UI.')) return;
-  const tbody = document.getElementById('attendanceTbody');
-  if (tbody) tbody.innerHTML = '';
-  alert('Cleared UI (server data unchanged).');
-}
-
-async function logoutAndRedirect() {
-  // try POST /api/logout so session cookie destroyed and JSON returned
   try {
-    await fetch('/api/logout', { method: 'POST', credentials: 'include', headers: { 'Accept': 'application/json' } });
-  } catch (e) {
-    console.warn('logout POST failed, falling back to GET /logout', e);
+    const res = await fetchAttendance(date, batch);
+    renderAttendanceRows(res.list || [], date, res.batchDeadlines || {});
+  } catch (err) {
+    if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="padding:24px;text-align:center;color:crimson">Failed to load attendance</td></tr>`;
   }
-  // redirect to login page
-  window.location.href = '/login';
 }
 
-// --- bootstrap ---
-let pollHandle = null;
-document.addEventListener('DOMContentLoaded', () => {
-  // wire UI
-  const btn = document.getElementById('logoutBtn');
-  if (btn) btn.addEventListener('click', logoutAndRedirect);
 
+// menu/side bar toggles
+document.addEventListener('DOMContentLoaded', () => {
+  const menuBtn = document.getElementById('menuBtn');
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('overlay');
+  const closeSidebar = document.getElementById('closeSidebar');
+  const logoutBtn = document.getElementById('logoutBtn');
+  const sidebarLogout = document.getElementById('sidebarLogout');
+  const batchFilter = document.getElementById('batchFilter');
+
+  function openSidebar(){
+    sidebar.classList.add('open');
+    sidebar.setAttribute('aria-hidden','false');
+    overlay.classList.remove('hidden');
+  }
+  function close(){
+    sidebar.classList.remove('open');
+    sidebar.setAttribute('aria-hidden','true');
+    overlay.classList.add('hidden');
+  }
+
+  menuBtn && menuBtn.addEventListener('click', openSidebar);
+  closeSidebar && closeSidebar.addEventListener('click', close);
+  overlay && overlay.addEventListener('click', close);
+
+  logoutBtn && logoutBtn.addEventListener('click', async () => {
+    try { await fetch('/api/logout',{ method:'POST', credentials:'include' }); } catch(e){}
+    window.location.href = '/login';
+  });
+  sidebarLogout && sidebarLogout.addEventListener('click', () => {
+    // same as logout button
+    logoutBtn && logoutBtn.click();
+  });
+
+  // date default
   const dateInput = document.getElementById('attendanceDate');
   const today = formatDateYYYYMMDD();
   if (dateInput && !dateInput.value) dateInput.value = today;
 
+  // load on refresh
   const refreshBtn = document.getElementById('refreshBtn');
-  if (refreshBtn) {
-    refreshBtn.addEventListener('click', async () => {
-      refreshBtn.disabled = true;
-      await loadAttendanceForSelectedDate();
-      refreshBtn.disabled = false;
-    });
-  }
+  refreshBtn && refreshBtn.addEventListener('click', loadAttendanceForSelectedDate);
 
-  const clearBtn = document.getElementById('clearBtn');
-  if (clearBtn) clearBtn.addEventListener('click', clearAllRecords);
-
-  // initial
-  loadAttendanceForSelectedDate();
-  loadRecentActivity();
-
-  if (pollHandle) clearInterval(pollHandle);
-  pollHandle = setInterval(() => {
+  // batch filter change
+  batchFilter && batchFilter.addEventListener('change', () => {
     loadAttendanceForSelectedDate();
-    loadRecentActivity();
-  }, POLL_INTERVAL_MS);
+  });
+
+  // close sidebar by default (hidden)
+  sidebar.classList.remove('open');
+  overlay.classList.add('hidden');
+
+  // initial fetch
+  loadAttendanceForSelectedDate();
+
+  // poll
+  setInterval(loadAttendanceForSelectedDate, POLL_INTERVAL_MS);
+});
+
+/* ====== NEW: listen for storage events so admin refreshes immediately when students update ====== */
+window.addEventListener('storage', (ev) => {
+  if (!ev.key) return;
+  if (ev.key === 'gspl_attendance_update') {
+    try {
+      // immediate refresh of table (only if attendance view is visible)
+      const currentView = document.querySelector('.sidebar .navitem.active')?.getAttribute('data-view');
+      if (currentView === 'attendance') {
+        // call your existing loader
+        loadAttendanceForSelectedDate();
+      }
+    } catch (e) { console.error(e); }
+  }
 });

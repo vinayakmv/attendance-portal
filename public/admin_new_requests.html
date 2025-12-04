@@ -1,0 +1,207 @@
+<!-- <!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>New Requests — Debug</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <style>
+    body{font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;background:#f5f6f8;margin:0;color:#222}
+    header{background:linear-gradient(180deg,#46a01b,#3ca015);color:#fff;padding:20px;text-align:center}
+    .container{max-width:1000px;margin:24px auto;padding:12px}
+    .card{background:#fff;border-radius:10px;padding:18px;box-shadow:0 8px 24px rgba(20,20,40,0.06)}
+    h1{margin:0 0 8px}
+    .muted{color:#666}
+    pre.debug{background:#0b1220;color:#dbe9ff;padding:12px;border-radius:6px;overflow:auto;max-height:220px}
+    .attempt{border-radius:6px;padding:10px;margin:10px 0;border:1px solid #e6e8eb;background:#fafafa}
+    .attempt .url{font-weight:700;color:#1b4d8a}
+    .attempt .status.ok{color:#0b7a10}
+    .attempt .status.fail{color:#b91c1c}
+    .notice{padding:10px;border-radius:6px;background:#fff3f3;color:#b91c1c;margin-top:10px}
+    .req-card{background:#fffbe9;border:1px solid #ffd88a;border-radius:8px;padding:12px;margin:12px 0;display:flex;justify-content:space-between;align-items:center}
+    .btn{padding:8px 12px;border:none;border-radius:6px;cursor:pointer;font-weight:700}
+    .btn.ok{background:#2aa44f;color:#fff}
+    .btn.warn{background:#e23b3b;color:#fff}
+    .small{font-size:13px;color:#666}
+  </style>
+</head>
+<body>
+  <header><h2>User Registration — Debug Loader</h2></header>
+  <div class="container">
+    <div class="card">
+      <h3>Attempt log</h3>
+      <p class="muted">This page will attempt several likely endpoints and show detailed results. Use the logs below to tell me which endpoint returned data (200) or which returned an error (401/404/500) so I can tailor the final page.</p>
+
+      <div id="attempts"></div>
+
+      <h3 style="margin-top:18px">Requests (if any)</h3>
+      <div id="requestsArea"><div class="small muted">No requests loaded yet.</div></div>
+
+      <h3 style="margin-top:18px">Raw last response</h3>
+      <pre id="raw" class="debug">n/a</pre>
+
+      <div id="help" style="margin-top:12px">
+        <div class="small muted">If you see a 200 response in the attempts list, copy the JSON shown in <code>Raw last response</code> (or paste the endpoint + status) here and send it — I'll update the page to use that endpoint and map fields properly.</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(async function(){
+  const base = window.location.origin;
+  const attemptsEl = document.getElementById('attempts');
+  const requestsArea = document.getElementById('requestsArea');
+  const raw = document.getElementById('raw');
+
+  const candidates = [
+    '/api/admin/requests',
+    '/api/admin/pending-requests',
+    '/api/admin/registration-requests',
+    '/api/requests/pending',
+    '/api/admin/pendingAccounts',
+    '/admin/requests',                 // extra fallbacks
+    '/admin/pending-requests'
+  ];
+
+  function appendAttempt(url, ok, status, textOrErr){
+    const div = document.createElement('div');
+    div.className = 'attempt';
+    const good = ok && status >= 200 && status < 300;
+    div.innerHTML = `<div class="url">${url}</div>
+      <div class="status ${good ? 'ok' : 'fail'}">Status: ${status} ${good ? '✓' : '✕'}</div>
+      <div class="small" style="margin-top:6px">${typeof textOrErr === 'string' ? textOrErr.slice(0,120) + (textOrErr.length>120? '...':'') : (textOrErr && typeof textOrErr === 'object' ? JSON.stringify(textOrErr).slice(0,120) : '')}</div>`;
+    attemptsEl.appendChild(div);
+  }
+
+  async function tryFetch(ep){
+    const url = base + ep;
+    try {
+      const r = await fetch(url, { credentials:'include', headers: { Accept:'application/json' }});
+      const st = r.status;
+      // attempt to parse json, but if not json read text
+      let parsed=null, text=null;
+      try { parsed = await r.clone().json(); } catch(e){ text = await r.clone().text().catch(()=>null) }
+      appendAttempt(url, r.ok, st, parsed || text || '(no body)');
+      raw.textContent = parsed ? JSON.stringify(parsed, null, 2) : (text || '(no body)');
+      // if 2xx and parsed, return parsed & url
+      if (r.ok && parsed) return { ok:true, url, data:parsed, status:st };
+      if (r.ok && !parsed) return { ok:true, url, data: null, status:st, rawText: text };
+      return { ok:false, url, status:st, data: parsed, rawText: text };
+    } catch (err) {
+      appendAttempt(url, false, 'ERR', String(err));
+      raw.textContent = String(err);
+      return { ok:false, url, status:'ERR', err:String(err) };
+    }
+  }
+
+  // run sequential attempts and stop at first that returns a JSON array/object with potential list
+  let final = null;
+  for (const ep of candidates){
+    const res = await tryFetch(ep);
+    // heuristics: if res.ok && data is object/array with length or requests/list props => success
+    if (res.ok && res.data){
+      const d = res.data;
+      const maybeList = d.requests || d.list || d.data || (Array.isArray(d) ? d : null);
+      if (maybeList && (Array.isArray(maybeList) ? maybeList.length >= 0 : true)){
+        final = { url: res.url, data: d, list: maybeList || (Array.isArray(d) ? d : null) };
+        break;
+      }
+      // if the root has many keys but not list, still treat as success (server may return wrapper)
+      if (Object.keys(d).length > 0){
+        final = { url: res.url, data: d, list: d.requests || d.list || d.data || null };
+        break;
+      }
+    }
+    // else continue to next endpoint
+  }
+
+  if (!final){
+    requestsArea.innerHTML = '<div class="notice">Failed to load requests from the known endpoints. See attempt log above for details. If you see a 401, ensure session cookie is present (are you logged in as admin?).</div>';
+    return;
+  }
+
+  // Show the loaded list (normalized)
+  requestsArea.innerHTML = '';
+  const header = document.createElement('div');
+  header.className = 'small muted';
+  header.textContent = `Loaded from: ${final.url}`;
+  requestsArea.appendChild(header);
+
+  // normalize list
+  let list = final.list;
+  if (!list){
+    // try to pick common wrappers
+    const d = final.data;
+    list = d.requests || d.list || d.data || null;
+    if (!list) {
+      // try to detect when server returns single object for one request: wrap it
+      if (d && (d.email || d.name || d.id)) list = [d];
+    }
+  }
+
+  if (!list || !list.length){
+    const empty = document.createElement('div');
+    empty.className = 'small muted';
+    empty.textContent = 'No pending requests returned by the endpoint.';
+    requestsArea.appendChild(empty);
+    return;
+  }
+
+  // render each request summary and buttons that call back to the server using the detected base url
+  list.forEach(item => {
+    const id = item._id || item.id || item.requestId || item.email || JSON.stringify(item).slice(0,40);
+    const card = document.createElement('div');
+    card.className = 'req-card';
+    card.innerHTML = `
+      <div>
+        <div style="font-weight:800">${item.name || item.fullName || item.email || 'Unnamed'}</div>
+        <div class="small"><strong>Email:</strong> ${item.email || item.username || '—'}</div>
+        <div class="small"><strong>Role:</strong> ${item.role || item.type || 'student'}</div>
+        <div class="small muted"><small>Raw id: ${id}</small></div>
+      </div>
+      <div>
+        <button class="btn ok" data-action="approve">Approve</button>
+        <button class="btn warn" data-action="reject" style="margin-left:8px">Reject</button>
+      </div>`;
+    requestsArea.appendChild(card);
+
+    // wire approve/reject to attempt probable endpoints derived from final.url
+    async function doAction(action){
+      const candidatesAction = [
+        // try endpoints based on final.url root
+        final.url.replace(/\/$/, '') + `/${id}/${action === 'approve' ? 'approve' : 'reject'}`,
+        final.url.replace(/\/$/, '') + `/${id}/${action === 'approve' ? 'allow' : 'neglect'}`,
+        `/api/admin/requests/${encodeURIComponent(id)}/${action === 'approve' ? 'approve' : 'reject'}`,
+        `/api/admin/requests/${encodeURIComponent(id)}/${action === 'approve' ? 'allow' : 'neglect'}`,
+        `/api/${action}/${encodeURIComponent(id)}`,
+      ];
+
+      for (const u of candidatesAction){
+        const full = u.startsWith('http') ? u : base + u;
+        appendAttempt(full + ' (trial)', false, 'TRY', 'attempting action');
+        try {
+          const r = await fetch(full, { method:'POST', credentials:'include', headers:{ Accept:'application/json'}});
+          const txt = await r.text().catch(()=>null);
+          appendAttempt(full, r.ok, r.status, txt || '(no body)');
+          if (r.ok) {
+            alert(action + ' successful via: ' + full);
+            // notify other pages
+            try { localStorage.setItem('gspl_new_requests_update', Date.now().toString()) } catch(e){}
+            return true;
+          }
+        } catch (e){
+          appendAttempt(full, false, 'ERR', String(e));
+        }
+      }
+      alert('All candidate action endpoints failed. See attempts above.');
+      return false;
+    }
+
+    card.querySelector('[data-action="approve"]').addEventListener('click', ()=>doAction('approve'));
+    card.querySelector('[data-action="reject"]').addEventListener('click', ()=>doAction('reject'));
+  });
+
+})();
+</script>
+</body>
+</html> -->

@@ -101,3 +101,30 @@ button {
     border-radius: 4px;
     cursor: pointer;
 }
+
+/* add to your style.css */
+.status-pill {
+  display:inline-block;
+  padding:10px 14px;
+  border-radius:24px;
+  font-weight:700;
+  box-shadow:0 4px 14px rgba(0,0,0,0.06);
+}
+.status-pill.in { background:#e8f9f0;color:#0b6b3a; }
+.status-pill.out { background:#fbf0f0;color:#b71c1c; }
+
+/* small card style for In/Out/Lunch */
+.ts-card {
+  display:inline-block;
+  background:#fbfdff;
+  border-radius:10px;
+  padding:10px 12px;
+  box-shadow: 0 4px 10px rgba(12,40,80,0.04);
+  margin:4px 0;
+}
+.ts-card .label { font-weight:700; color:#0b69a6; margin-bottom:4px; display:block; }
+.ts-card .value { color:#333; font-size:0.95em; }
+
+/* lunch countdown */
+#lunchCountdown { font-weight:700; margin-left:8px; font-size:0.95em; color:#075ba8; }
+#lunchCountdown.overtime { color:#b91c1c; }

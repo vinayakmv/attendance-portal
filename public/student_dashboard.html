@@ -1,32 +1,492 @@
-<!-- public/student_dashboard.html -->
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Student Dashboard</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Employee Dashboard - GSPL Attendance Portal</title>
   <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/student_dashboard.css" />
+  <style>
+    /* minimal inline helpers to make cards look nice */
+    .center-card{max-width:780px;margin:36px auto;padding:28px;background:#fff;border-radius:12px;box-shadow:0 10px 30px rgba(10,10,30,0.06);text-align:center}
+    .greeting{font-size:22px;font-weight:700}
+    .small-muted{color:#666;margin-top:6px}
+    .status-pill{display:inline-flex;align-items:center;gap:10px;padding:8px 14px;border-radius:26px;margin:12px auto;background:#f2faf2}
+    .status-pill.out{background:#fbf6f6;color:#c33}
+    .status-pill.in{background:#ecfff0;color:#04633b}
+    .status-pill .dot{width:12px;height:12px;border-radius:50%;display:inline-block}
+    .dot-on{background:#0a7a3a}
+    .dot-off{background:#bdbdbd}
+    .controls{margin-top:20px;display:flex;flex-direction:column;align-items:center;gap:12px}
+    .btn{padding:10px 18px;border-radius:10px;border:none;cursor:pointer;font-weight:700}
+    .btn.primary{background:#2b6cb0;color:#fff}
+    .btn.primary-filled{background:#1f4f90;color:#fff;box-shadow:0 6px 18px rgba(20,100,200,0.12)}
+    .btn.success{background:#0b8b4f;color:#fff}
+    .btn.danger{background:#d94b3d;color:#fff}
+    .lunch-row{display:flex;gap:10px;align-items:center}
+    .ts-inline{display:flex;gap:16px;justify-content:center;margin-top:12px}
+    .ts-card{display:inline-block;background:#fbfdff;border-radius:10px;padding:10px 12px;box-shadow:0 6px 14px rgba(10,10,30,0.04)}
+    .ts-card .muted{color:#666;font-size:13px}
+    .ts-block{background:#f8fbff;border-radius:8px;padding:8px;margin-bottom:8px;display:inline-block}
+    .l-dur.overtime{color:#b91c1c;font-weight:800}
+    #lunchCountdown.overtime{color:#b91c1c;font-weight:800}
+  </style>
 </head>
 <body>
-  <header>
-    <h1>Employee Dashboard</h1>
-    <button onclick="logout()" style="position:absolute;right:16px;top:18px;padding:8px 12px;">Logout</button>
+  <header class="app-header" style="background:linear-gradient(180deg,#46a01b,#3ca015);color:#fff;padding:18px 0;">
+    <div class="header-inner" style="max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:0 16px">
+      <div style="font-weight:800;font-size:20px">GSPL Attendance Portal</div>
+      <div>
+        <button id="logoutBtn" class="btn" style="background:rgba(255,255,255,0.12);color:#fff;border-radius:8px;padding:8px 12px">Logout</button>
+      </div>
+    </div>
   </header>
 
-  <main>
-    <div class="student-dashboard" style="text-align:center;padding:30px;">
-      <h2 class="greeting" id="studentGreeting">Hello Employee!</h2>
+  <main class="page">
+    <section class="center-card">
+      <div class="welcome">
+        <div class="greeting" id="studentGreeting">Hello Employee!</div>
+        <div class="small-muted" id="batchInfo">Batch: <strong id="myBatch">—</strong></div>
+      </div>
 
-      <button class="toggle-button logged-in" id="attendanceToggle" onclick="toggleAttendance()" style="padding:15px 30px;font-size:1.2em;border-radius:8px;">
-        Clock In
-      </button>
+      <div style="margin-top:14px;display:flex;gap:18px;justify-content:center;flex-wrap:wrap">
+        <div class="ts-card">
+          <div style="font-weight:700">Clock In</div>
+          <div id="clockInTime" style="margin-top:6px;color:#222">—</div>
+        </div>
+        <div class="ts-card">
+          <div style="font-weight:700">Clock Out</div>
+          <div id="clockOutTime" style="margin-top:6px;color:#222">—</div>
+        </div>
+      </div>
 
-      <a href="#" class="report-link" onclick="alert('Attendance Report is Future Scope! Requires a database.')" style="display:block;margin-top:30px;">
-        Attendance Report ➡️
-      </a>
-    </div>
+      <div class="status-pill out" id="statusPill" aria-live="polite" style="margin-top:14px">
+        <span class="dot dot-off"></span>
+        <span class="status-text">Not Logged In</span>
+      </div>
+
+      <div class="controls">
+        <button id="attendanceToggle" class="btn primary large">Clock In</button>
+
+        <div class="lunch-row" style="margin-top:6px">
+          <button id="lunchStartBtn" class="btn success">Start Lunch 🍽️</button>
+          <button id="lunchEndBtn" class="btn danger" disabled>End Lunch ⏱️</button>
+        </div>
+
+        <!-- lunch card (start, end, duration + countdown) -->
+        <div id="lunchCard" class="ts-card" style="display:none;margin-top:10px">
+          <div style="font-weight:700;margin-bottom:6px">Lunch</div>
+          <div><small class="muted">Start:</small> <span class="l-start">—</span></div>
+          <div><small class="muted">End:</small> <span class="l-end">—</span></div>
+          <div><small class="muted">Duration:</small> <span class="l-dur">—</span></div>
+          <div id="lunchCountdown" style="font-weight:700;margin-top:6px"></div>
+        </div>
+<!-- 
+        <div class="links-row" style="margin-top:6px">
+          <a href="/admin/report" class="link" id="attendanceReport">Attendance Report ⤓</a>
+        </div> -->
+      </div>
+
+      <div class="notes" style="margin-top:14px;color:#666">
+        <div><strong>Tip:</strong> Use the Clock In / Clock Out button to record your day. Use the lunch buttons for lunch start/end.</div>
+      </div>
+    </section>
   </main>
 
-  <script src="/js/student_dashboard.js"></script>
+  <script>
+  /***************************************************************
+   Robust student dashboard client
+   - defensive fetches (tries to obtain timestamps even if status endpoint is minimal)
+   - keeps timestamps after refresh (merges data)
+   - shows lunch duration only after lunchEndAt exists
+   - prevents lunch end / clock out if earlier than start (client-side guard)
+  ***************************************************************/
+
+  (function(){
+    const base = '';
+    const POLL_INTERVAL_MS = 7000;
+    let lunchTimerHandle = null;
+    // local cached state so polling doesn't wipe good values with a tiny response
+    let localState = {
+      status: null,
+      lastClockInAt: null,
+      lastClockOutAt: null,
+      lunchStartAt: null,
+      lunchEndAt: null
+    };
+
+    // ----------------- helpers -----------------
+    function q(id){ return document.getElementById(id); }
+
+    function toast(msg, type='info', ttl=3000){
+      let t = document.getElementById('globalToast');
+      if(!t){
+        t = document.createElement('div'); t.id='globalToast';
+        Object.assign(t.style, { position:'fixed', right:'18px', bottom:'22px', zIndex:9999, padding:'10px 14px', borderRadius:'10px', color:'#fff', fontWeight:700 });
+        document.body.appendChild(t);
+      }
+      t.textContent = msg;
+      t.style.background = type === 'ok' ? '#0b8b4f' : (type === 'warn' ? '#d96a3d' : '#1f6fd8');
+      t.style.opacity = '1';
+      setTimeout(()=>{ t.style.transition='opacity .4s'; t.style.opacity='0'; }, ttl);
+    }
+
+    async function postJson(path){
+      const r = await fetch(path, { method:'POST', credentials:'include' });
+      if (!r.ok) {
+        const txt = await r.text().catch(()=>null);
+        const err = new Error(txt || `HTTP ${r.status}`);
+        err.status = r.status;
+        throw err;
+      }
+      return await r.json().catch(()=>null);
+    }
+
+    function isValidDate(v){
+      if(!v) return false;
+      try { const d = new Date(v); return !isNaN(d); } catch(e){ return false; }
+    }
+
+    function toDate(v){
+      if(!v) return null;
+      // object with $date
+      if(typeof v === 'object' && v !== null){
+        if(v.$date) return toDate(v.$date);
+        try { const s = String(v); const d = new Date(s); if(!isNaN(d)) return d; } catch(e){}
+        return null;
+      }
+      if(typeof v === 'number'){
+        // if 10-digit seconds -> convert
+        if(v > 0 && v < 1e12) v = v * 1000;
+        const d = new Date(v);
+        if(!isNaN(d)) return d;
+        return null;
+      }
+      if(typeof v === 'string'){
+        const s = v.trim();
+        // /Date(123456789)/ pattern
+        const m = s.match(/\/Date\((\d+)\)\//);
+        if(m) { const n = Number(m[1]); return new Date(n); }
+        // numeric string
+        if(/^\d+$/.test(s)){
+          let n = Number(s);
+          if(n > 0 && n < 1e12) n = n * 1000;
+          const d = new Date(n);
+          if(!isNaN(d)) return d;
+        }
+        // try to convert (allow space -> T)
+        const tryIso = (s.indexOf('T') === -1 && s.indexOf(' ') > -1) ? s.replace(' ', 'T') : s;
+        const d = new Date(tryIso);
+        if(!isNaN(d)) return d;
+        return null;
+      }
+      return null;
+    }
+
+    function formatShortLocal(d){
+      if(!d) return '—';
+      if(typeof d === 'string' || typeof d === 'number') d = toDate(d);
+      if(!d) return '—';
+      return d.toLocaleString(undefined, { year:'numeric', month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' });
+    }
+    function formatTimeOnly(d){
+      if(!d) return '—';
+      if(typeof d === 'string' || typeof d === 'number') d = toDate(d);
+      if(!d) return '—';
+      return d.toLocaleTimeString([], { hour:'numeric', minute:'2-digit' });
+    }
+
+    function updateStatusPillUI(isLoggedIn){
+      const pill = q('statusPill');
+      if(!pill) return;
+      pill.className = isLoggedIn ? 'status-pill in' : 'status-pill out';
+      const txt = pill.querySelector('.status-text') || pill;
+      const dot = pill.querySelector('.dot');
+      if (txt) txt.textContent = isLoggedIn ? 'Logged In' : 'Not Logged In';
+      if (dot) { dot.className = isLoggedIn ? 'dot dot-on' : 'dot dot-off'; }
+      const attBtn = q('attendanceToggle');
+      if(attBtn){
+        if(isLoggedIn){
+          attBtn.textContent = 'Clock Out';
+          attBtn.classList.remove('primary'); attBtn.classList.add('primary-filled');
+        } else {
+          attBtn.textContent = 'Clock In';
+          attBtn.classList.remove('primary-filled'); attBtn.classList.add('primary');
+        }
+      }
+    }
+
+    function showClockTimesUI(state){
+      // uses localState (merged)
+      q('clockInTime').textContent = state.lastClockInAt ? formatShortLocal(state.lastClockInAt) : '—';
+      q('clockOutTime').textContent = state.lastClockOutAt ? formatShortLocal(state.lastClockOutAt) : '—';
+    }
+
+    function showLunchCardUI(state){
+      const lc = q('lunchCard');
+      if(!state.lunchStartAt && !state.lunchEndAt && (state.lunchDurationMins == null)) {
+        lc.style.display = 'none';
+        stopLunchCountdown();
+        return;
+      }
+      lc.style.display = 'inline-block';
+      q('lunchCard').querySelector('.l-start').textContent = state.lunchStartAt ? formatShortLocal(state.lunchStartAt) : '—';
+      q('lunchCard').querySelector('.l-end').textContent = state.lunchEndAt ? formatShortLocal(state.lunchEndAt) : '—';
+      // Duration should only show after lunchEndAt exists
+      const durEl = q('lunchCard').querySelector('.l-dur');
+      if(state.lunchEndAt){
+        // compute minutes if we have both
+        const s = toDate(state.lunchStartAt), e = toDate(state.lunchEndAt);
+        if(s && e && !isNaN(e - s)){
+          const mins = Math.round((e - s)/60000);
+          durEl.textContent = `${mins} min`;
+          if(mins > 30) durEl.classList.add('overtime'); else durEl.classList.remove('overtime');
+        } else {
+          durEl.textContent = state.lunchDurationMins != null ? `${state.lunchDurationMins} min` : '—';
+        }
+        stopLunchCountdown();
+      } else {
+        durEl.textContent = '—';
+        // start countdown if lunchStartAt exists and no lunchEndAt
+        if(state.lunchStartAt) startLunchCountdown(state.lunchStartAt);
+      }
+    }
+
+    function startLunchCountdown(lunchStartAt){
+      const counter = q('lunchCountdown');
+      if(!counter || !lunchStartAt) return;
+      function tick(){
+        const start = toDate(lunchStartAt);
+        if(!start){ counter.textContent = ''; return; }
+        const elapsed = Math.floor((Date.now() - start.getTime())/60000);
+        const remaining = 30 - elapsed;
+        if(remaining <= 0){ counter.textContent = '0 min (Overtime)'; counter.classList.add('overtime'); clearInterval(lunchTimerHandle); lunchTimerHandle = null; return; }
+        counter.textContent = `${remaining} min left`;
+      }
+      if(lunchTimerHandle) clearInterval(lunchTimerHandle);
+      tick();
+      lunchTimerHandle = setInterval(tick, 20*1000);
+    }
+    function stopLunchCountdown(){
+      const counter = q('lunchCountdown');
+      if(counter){ counter.textContent = ''; counter.classList.remove('overtime'); }
+      if(lunchTimerHandle){ clearInterval(lunchTimerHandle); lunchTimerHandle = null; }
+    }
+
+    // Merge incoming server state into localState but do not remove already-known timestamps unless server explicitly returns null
+    function mergeServerState(incoming){
+      if(!incoming) return;
+      if('status' in incoming) localState.status = incoming.status;
+      // only overwrite if incoming provides non-null values; explicitly set to null if server sends null
+      ['lastClockInAt','lastClockOutAt','lunchStartAt','lunchEndAt','lunchDurationMins'].forEach(k => {
+        if(k in incoming){
+          // allow null to wipe
+          localState[k] = incoming[k];
+        }
+      });
+    }
+
+    // Try multiple endpoints (most info first) to obtain timestamps. This keeps UI from being wiped if /api/student/status is minimal
+    async function fetchFullStatus(){
+      const endpoints = [
+        '/api/student/status',                 // primary
+        '/api/student/today',                  // custom fallback (if exists)
+        '/api/student/attendance-today',       // other possible fallback
+        '/api/student/attendance?date=' + (new Date().toISOString().slice(0,10)) // fallback
+      ];
+      for(const ep of endpoints){
+        try{
+          const r = await fetch(ep, { credentials:'include' });
+          if(!r.ok) continue;
+          const j = await r.json().catch(()=>null);
+          if(!j) continue;
+          // The server may return different shapes. Try to extract relevant fields:
+          const candidate = {};
+          if(j.status) candidate.status = j.status;
+          if(j.lastClockInAt) candidate.lastClockInAt = j.lastClockInAt;
+          if(j.lastClockOutAt) candidate.lastClockOutAt = j.lastClockOutAt;
+          if(j.lunchStartAt) candidate.lunchStartAt = j.lunchStartAt;
+          if(j.lunchEndAt) candidate.lunchEndAt = j.lunchEndAt;
+          if(j.lunchDurationMins != null) candidate.lunchDurationMins = j.lunchDurationMins;
+          // Also common alternative shapes:
+          if(j.attendance){
+            const a = j.attendance;
+            if(a.lastClockInAt) candidate.lastClockInAt = a.lastClockInAt;
+            if(a.lastClockOutAt) candidate.lastClockOutAt = a.lastClockOutAt;
+            if(a.lunchStartAt) candidate.lunchStartAt = a.lunchStartAt;
+            if(a.lunchEndAt) candidate.lunchEndAt = a.lunchEndAt;
+          }
+          // If this endpoint has at least 'status' or timestamps, use it
+          if(Object.keys(candidate).length > 0){
+            return candidate;
+          }
+        }catch(e){ /* ignore and try next */ }
+      }
+      // final attempt: /api/me might include todays attendance in some implementations
+      try{
+        const r = await fetch('/api/me', { credentials:'include' });
+        if(r.ok){
+          const j = await r.json().catch(()=>null);
+          if(j && j.attendance){ return j.attendance; }
+        }
+      }catch(e){}
+      // nothing found
+      return null;
+    }
+
+    // ----------------- actions -----------------
+    async function toggleAttendance(){
+      const attBtn = q('attendanceToggle');
+      if(attBtn) attBtn.disabled = true;
+      try{
+        // if we are clocking out, ensure end is not before lastClockInAt
+        const currentlyLoggedIn = localState.status === 'logged_in';
+        if(currentlyLoggedIn && localState.lastClockInAt){
+          const lastIn = toDate(localState.lastClockInAt);
+          if(lastIn && Date.now() < lastIn.getTime()){
+            alert('System clock problem: current time is earlier than your last clock in. Cannot clock out.');
+            if(attBtn) attBtn.disabled = false;
+            return;
+          }
+        }
+
+        const result = await postJson('/api/student/toggle');
+        // server may return partial state. merge
+        mergeServerState(result || {});
+        // if server returned `status` or timestamps, update UI
+        updateStatusPillUI(localState.status === 'logged_in');
+        showClockTimesUI(localState);
+        showLunchCardUI(localState);
+        toast(result && result.message ? result.message : 'Attendance updated', 'ok', 2000);
+        try { localStorage.setItem('gspl_attendance_update', Date.now().toString()); } catch(e){}
+      }catch(err){
+        console.error(err);
+        toast(err.message || 'Action failed', 'warn', 3500);
+        if(err.status === 401) window.location.href = '/login';
+      } finally {
+        if(attBtn) attBtn.disabled = false;
+      }
+    }
+
+    async function startLunch(){
+      const btn = q('lunchStartBtn'); if(btn) btn.disabled = true;
+      try{
+        const result = await postJson('/api/student/lunch/start');
+        mergeServerState(result || {});
+        updateLunchButtonsUI();
+        showLunchCardUI(localState);
+        toast('Lunch started', 'ok', 2000);
+        try { localStorage.setItem('gspl_attendance_update', Date.now().toString()); } catch(e){}
+      }catch(err){
+        console.error(err);
+        toast(err.message || 'Failed to start lunch', 'warn', 3000);
+        if(btn) btn.disabled = false;
+      }
+    }
+
+    async function endLunch(){
+      const btn = q('lunchEndBtn'); if(btn) btn.disabled = true;
+      try{
+        // client-side guard: ensure lunchStartAt exists and end now >= start
+        if(!localState.lunchStartAt){
+          alert('No lunch start found for this session.');
+          if(btn) btn.disabled = false;
+          return;
+        }
+        const start = toDate(localState.lunchStartAt);
+        if(start && Date.now() < start.getTime()){
+          alert('System time problem: current time is earlier than lunch start. Cannot end lunch.');
+          if(btn) btn.disabled = false;
+          return;
+        }
+
+        const result = await postJson('/api/student/lunch/end');
+        mergeServerState(result || {});
+        updateLunchButtonsUI();
+        showLunchCardUI(localState);
+        toast('Lunch ended', 'ok', 2000);
+        try { localStorage.setItem('gspl_attendance_update', Date.now().toString()); } catch(e){}
+      }catch(err){
+        console.error(err);
+        toast(err.message || 'Failed to end lunch', 'warn', 3000);
+        if(btn) btn.disabled = false;
+      }
+    }
+
+    function updateLunchButtonsUI(){
+      const startBtn = q('lunchStartBtn');
+      const endBtn = q('lunchEndBtn');
+      if(!startBtn || !endBtn) return;
+      if(localState.lunchStartAt && !localState.lunchEndAt){
+        startBtn.disabled = true; endBtn.disabled = false;
+      } else {
+        startBtn.disabled = false; endBtn.disabled = true;
+      }
+    }
+
+    // ----------------- periodic poll & UI boot -----------------
+    async function refreshFromServer(){
+      try{
+        const s = await fetchFullStatus();
+        if(s) mergeServerState(s);
+        // update UI using localState (merged)
+        updateStatusPillUI(localState.status === 'logged_in');
+        showClockTimesUI(localState);
+        updateLunchButtonsUI();
+        showLunchCardUI(localState);
+      }catch(e){
+        console.warn('refresh failed', e);
+      }
+    }
+
+    async function loadInitial(){
+      // try /api/me to populate name / batch
+      try {
+        const r = await fetch('/api/me', { credentials:'include' });
+        if(r.ok){
+          const j = await r.json().catch(()=>null);
+          if(j && j.user){
+            q('studentGreeting').textContent = `Hello ${j.user.name || 'Employee'}!`;
+            q('myBatch').textContent = j.user.batch || '—';
+          }
+        }
+      }catch(e){}
+
+      // fetch status + timestamps (defensive)
+      await refreshFromServer();
+
+      // poll periodically (but merge, do not wipe)
+      setInterval(refreshFromServer, POLL_INTERVAL_MS);
+    }
+
+    // ----------------- DOM wiring -----------------
+    document.addEventListener('DOMContentLoaded', () => {
+      // event bindings
+      const logoutBtn = q('logoutBtn');
+      if(logoutBtn) logoutBtn.addEventListener('click', async () => { await fetch('/api/logout', { method:'POST', credentials:'include' }).catch(()=>{}); window.location.href = '/login'; });
+
+      const attBtn = q('attendanceToggle'); if (attBtn) attBtn.addEventListener('click', toggleAttendance);
+      const ls = q('lunchStartBtn'); if (ls) ls.addEventListener('click', startLunch);
+      const le = q('lunchEndBtn'); if (le) le.addEventListener('click', endLunch);
+
+      // initial UI placeholders
+      updateStatusPillUI(false);
+      showClockTimesUI({});
+      updateLunchButtonsUI();
+      showLunchCardUI({});
+
+      loadInitial();
+
+      // storage listener so admin page refreshes when we update and vice versa
+      window.addEventListener('storage', (ev) => {
+        if (!ev.key) return;
+        if (ev.key === 'gspl_attendance_update' || ev.key === 'gspl_new_requests_update') {
+          refreshFromServer();
+        }
+      });
+    });
+
+  })();
+  </script>
 </body>
 </html>
